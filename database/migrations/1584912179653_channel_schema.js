@@ -7,9 +7,10 @@ class ChannelSchema extends Schema {
   up () {
     this.create('channels', (table) => {
       table.increments()
-      table.string('name', 100).notNullable()
-      table.text('description')
-      table.text('logo')
+      table.string('name', 200).notNullable().unique()
+      table.text('description').nullable()
+      table.text('channel_logo').notNullable().defaultTo('https://i.imgur.com/txJ6DPX.jpg')
+      table.text('channel_artwork').nullable()
       table.timestamps()
     })
   }

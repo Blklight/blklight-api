@@ -8,8 +8,12 @@ class UserSchema extends Schema {
     this.create('users', (table) => {
       table.increments()
       table.string('username', 80).notNullable().unique()
-      table.string('email', 254).notNullable().unique()
-      table.string('password', 60).notNullable()
+      table.text('email').notNullable().unique()
+      table.text('password').notNullable()
+      table.text('description').nullable()
+      table.text('user_image').nullable().defaultTo('https://i.imgur.com/3fnDbHr.jpg')
+      table.boolean('public_profile').notNullable().defaultTo(0)
+      table.boolean('role').notNullable().defaultTo()
       table.timestamps()
     })
   }
