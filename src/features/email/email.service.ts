@@ -10,6 +10,7 @@ import { hashEmailToken, hashPassword } from '../../utils/crypto';
 import { ValidationError, NotFoundError } from '../../utils/errors';
 import { env } from '../../config/env';
 import { features } from '../../config/features';
+import { passwordSchema } from '../auth/auth.zod';
 
 let resendClient: Resend | null = null;
 
@@ -216,8 +217,9 @@ async function resetPassword(token: string, newPassword: string): Promise<void> 
     throw new ValidationError('Reset link has expired. Please request a new one.');
   }
 
-  if (newPassword.length < 8 || newPassword.length > 128) {
-    throw new ValidationError('Password must be 8-128 characters');
+  const policy = passwordSchema.max(128).safeParse(newPassword);
+  if (!policy.success) {
+    throw new ValidationError(policy.error.issues[0]?.message ?? 'Invalid password');
   }
 
   const { hash, salt } = await hashPassword(newPassword);

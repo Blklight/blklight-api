@@ -216,6 +216,18 @@ export async function buildApp() {
       });
     }
 
+    // Postgres unique violation (drizzle wraps the driver error in `cause`): a
+    // race lost against a check-then-insert, e.g. two registrations with the
+    // same email. Same meaning as the services' own ConflictError.
+    const pgError = (knownError as Error & { cause?: { code?: string } }).cause ?? knownError;
+    if ((pgError as { code?: string }).code === '23505') {
+      return reply.code(409).send({
+        data: null,
+        error: { code: 'CONFLICT', message: 'Resource already exists' },
+        message: 'Resource already exists',
+      });
+    }
+
     return reply.code(500).send({
       data: null,
       error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },

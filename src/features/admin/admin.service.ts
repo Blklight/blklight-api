@@ -1,6 +1,6 @@
 import { eq, and, isNull, isNotNull, sql, ilike, or, desc, type SQL } from 'drizzle-orm';
 import { db } from '../../db/index';
-import { users } from '../auth/auth.schema';
+import { users, sessions } from '../auth/auth.schema';
 import { profiles } from '../profiles/profiles.schema';
 import { workspaces } from '../workspace/workspace.schema';
 import { signatures } from '../signatures/signatures.schema';
@@ -210,16 +210,23 @@ export async function updateUserRole(userId: string, role: 'user' | 'admin') {
     return { message: 'Role unchanged' };
   }
 
-  const [updated] = await db
-    .update(users)
-    .set({ role, updatedAt: new Date() })
-    .where(eq(users.id, userId))
-    .returning({
-      id: users.id,
-      email: users.email,
-      username: users.username,
-      role: users.role,
-    });
+  // The role travels in the access token: drop the sessions so a demoted admin
+  // cannot refresh and must sign in again (the current token still lives until
+  // JWT_ACCESS_EXPIRES_IN).
+  const updated = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(users)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning({
+        id: users.id,
+        email: users.email,
+        username: users.username,
+        role: users.role,
+      });
+    await tx.delete(sessions).where(eq(sessions.userId, userId));
+    return row;
+  });
 
   return updated!;
 }
