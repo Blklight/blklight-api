@@ -12,17 +12,17 @@ Last updated: March 29, 2026
 
 ## Summary Table
 
-| # | Severity | Title | File | Priority | Effort |
-|---|----------|-------|------|----------|--------|
-| 1 | CRITICAL | OAuth state not cryptographically validated | src/features/auth/oauth.routes.ts | Pre-MVP | Medium |
-| 2 | HIGH | Missing rate limits - likes | src/features/likes/likes.routes.ts | Pre-MVP | Small |
-| 3 | HIGH | Missing rate limits - bookmarks | src/features/bookmarks/bookmarks.routes.ts | Pre-MVP | Small |
-| 4 | HIGH | Missing rate limits - follows | src/features/follows/follows.routes.ts | Pre-MVP | Small |
-| 5 | HIGH | Missing rate limits - exercise submit | src/features/tutorial-exercises/tutorial-exercises.routes.ts | Pre-MVP | Small |
-| 6 | HIGH | OAuth login flow missing state | src/features/auth/oauth.routes.ts | Pre-MVP | Medium |
-| 7 | MEDIUM | URL validation too permissive | src/features/profiles/profiles.routes.ts, src/features/documents/documents.routes.ts | Beta | Small |
-| 8 | MEDIUM | userHash exposed in Authorship | src/features/documents/documents.service.ts | Beta | Small |
-| 9 | LOW | CORS configuration risk | src/config/env.ts, src/app.ts | Beta | Small |
+| # | Severity | Title | File | Priority | Effort | Status (2026-11-09) |
+|---|----------|-------|------|----------|--------|--------|
+| 1 | CRITICAL | OAuth state not cryptographically validated | src/features/auth/oauth.routes.ts | Pre-MVP | Medium | Open (OAuth off by default) |
+| 2 | HIGH | Missing rate limits - likes | src/features/likes/likes.routes.ts | Pre-MVP | Small | Fixed |
+| 3 | HIGH | Missing rate limits - bookmarks | src/features/bookmarks/bookmarks.routes.ts | Pre-MVP | Small | Fixed |
+| 4 | HIGH | Missing rate limits - follows | src/features/follows/follows.routes.ts | Pre-MVP | Small | Fixed |
+| 5 | HIGH | Missing rate limits - exercise submit | src/features/tutorial-exercises/tutorial-exercises.routes.ts | Pre-MVP | Small | Fixed |
+| 6 | HIGH | OAuth login flow missing state | src/features/auth/oauth.routes.ts | Pre-MVP | Medium | Open (OAuth off by default) |
+| 7 | MEDIUM | URL validation too permissive | src/features/profiles/profiles.routes.ts, src/features/documents/documents.routes.ts | Beta | Small | Fixed |
+| 8 | MEDIUM | userHash exposed in Authorship | src/features/documents/documents.service.ts | Beta | Small | Fixed |
+| 9 | LOW | CORS configuration risk | src/config/env.ts, src/app.ts | Beta | Small | Fixed |
 
 ---
 

@@ -70,10 +70,13 @@ export async function buildApp() {
     },
   });
 
-  await app.register(scalar, {
-    routePrefix: '/docs',
-    configuration: { title: 'blklight API' },
-  });
+  // The reference UI lists every route and schema: keep it out of production.
+  if (env.NODE_ENV !== 'production') {
+    await app.register(scalar, {
+      routePrefix: '/docs',
+      configuration: { title: 'blklight API' },
+    });
+  }
 
   await app.register(cookie, { parseOptions: {} });
 

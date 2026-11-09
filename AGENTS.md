@@ -4,10 +4,12 @@ REST API built with Fastify, auth-first, growing into full CRUD capabilities.
 
 ## Current Status
 
-Baseline atual: 136 testes / 0 failed. Último trabalho: vínculo
-documento↔organização mutável após publish, escrita atômica de
-documento/categoria/tags, cleanup dos testes de integração por prefixo e
-DEV recriado a partir do reset. Future: comments (post-MVP).
+Baseline atual: 168 testes / 0 failed. Último trabalho: itens P do
+`docs/QUALITY_REPORT.md` (sandbox desligado por padrão, `TRUST_PROXY`, rate
+limits por usuário, pbkdf2 assíncrono, hash dos tokens de e-mail, URLs só
+http(s), constraint única em `follows` com a migration 0024). Pendente: sandbox
+isolado de verdade e atualização das dependências com vulnerabilidades.
+Future: comments (post-MVP).
 
 > Inventário completo de rotas (admin, auth, pública) em `ADMIN_ROUTES.md` (não commitável).
 
