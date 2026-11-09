@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, unique, index } from 'drizzle-orm/pg-core';
 
 export const tags = pgTable('tags', {
   id: text('id').primaryKey(),
@@ -14,6 +14,7 @@ export const documentTags = pgTable('document_tags', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   documentTagUnique: unique().on(table.documentId, table.tagId),
+  tagIdx: index('document_tags_tag_id_idx').on(table.tagId),
 }));
 
 export type Tag = typeof tags.$inferSelect;

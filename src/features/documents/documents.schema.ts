@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { pgTable, text, timestamp, jsonb, unique, index } from 'drizzle-orm/pg-core';
 import { profiles } from '../profiles/profiles.schema';
 import { organizations } from '../organizations/organizations.schema';
@@ -27,6 +28,10 @@ export const documents = pgTable('documents', {
 }, (table) => ({
   authorSlugUnique: unique().on(table.authorId, table.slug),
   organizationIdx: index('documents_organization_id_idx').on(table.organizationId),
+  // Public feed: published, not deleted, newest first (keyset on published_at, id).
+  publishedFeedIdx: index('documents_published_feed_idx')
+    .on(table.publishedAt.desc().nullsFirst(), table.id.desc().nullsFirst())
+    .where(sql`${table.status} = 'published' AND ${table.deletedAt} IS NULL`),
 }));
 
 export const documentStyles = pgTable('document_styles', {

@@ -1,15 +1,11 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import type { OAuth2Namespace } from '@fastify/oauth2';
 
 declare module 'fastify' {
   interface FastifyInstance {
-    githubOAuth2: {
-      generateAuthorizationUri: (opts?: { scope?: string[]; state?: string }) => Promise<string>;
-      getAccessTokenFromAuthorizationCodeFlow: (opts: { code: string }) => Promise<{ token: { access_token: string } }>;
-    };
-    googleOAuth2: {
-      generateAuthorizationUri: (opts?: { scope?: string[]; state?: string }) => Promise<string>;
-      getAccessTokenFromAuthorizationCodeFlow: (opts: { code: string }) => Promise<{ token: { access_token: string } }>;
-    };
+    /** Registered only when FEATURE_OAUTH is on; routes call requireFeature('oauth') first. */
+    githubOAuth2: OAuth2Namespace;
+    googleOAuth2: OAuth2Namespace;
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }

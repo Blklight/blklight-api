@@ -798,105 +798,45 @@ Invalidate the current session and clear the refresh token cookie.
 
 ## OAuth
 
-### GET /api/v1/auth/github
+### GET /api/v1/auth/github · GET /api/v1/auth/google
 
-Redirect to GitHub OAuth authorization page. User will be redirected back to `/api/v1/auth/github/callback`.
-
-**Auth Required:** No
-
----
-
-### GET /api/v1/auth/github/callback
-
-GitHub OAuth callback. Creates or finds user, issues session, redirects to frontend.
-
-**Auth Required:** No
-
-**Query Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| code | string | GitHub authorization code |
-| state | string | (link flows) `link:{userId}` |
-
-**Redirects:**
-
-- New user without username: `FRONTEND_URL/onboarding?token={jwt}`
-- Existing user: `FRONTEND_URL/dashboard`
-- Error: `FRONTEND_URL/login?error={code}`
-
----
-
-### GET /api/v1/auth/github/link
-
-Start GitHub account linking for an authenticated user.
-
-**Auth Required:** Yes
-
-**Redirects to:** GitHub authorization page with state=`link:{userId}`
-
----
-
-### GET /api/v1/auth/github/link/callback
-
-Complete GitHub account linking.
-
-**Auth Required:** Yes
-
-**Query Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| code | string | GitHub authorization code |
-| state | string | Must start with `link:` |
-
-**Redirects:**
-
-- Success: `FRONTEND_URL/settings/account?linked=github`
-- Error: `FRONTEND_URL/settings/account?error={code}`
-
----
-
-### GET /api/v1/auth/google
-
-Redirect to Google OAuth authorization page.
+Redirect to the provider's authorization page. The plugin stores a random `state` and a PKCE verifier in httpOnly cookies; the provider returns to `/api/v1/auth/{provider}/callback`. Clears any pending link intent.
 
 **Auth Required:** No
 
 ---
 
-### GET /api/v1/auth/google/callback
+### POST /api/v1/auth/{provider}/link
 
-Google OAuth callback. Same flow as GitHub.
+Start linking `github` or `google` to the signed-in account. Call it with `fetch` (Bearer token, `credentials: 'include'`): it stores a single-use link intent (10 min) in the httpOnly cookie `oauthLinkIntent`, bound to this browser, and returns the URL to navigate to.
+
+**Auth Required:** Yes
+
+**Response:** `{ data: { url: "{OAUTH_REDIRECT_BASE_URL}/api/v1/auth/{provider}/link/start" } }`
+
+---
+
+### GET /api/v1/auth/{provider}/link/start
+
+Browser navigation after `POST /link`. Redirects to the provider when the `oauthLinkIntent` cookie holds a live intent; otherwise to `FRONTEND_URL/settings/account?error=link_expired`.
+
+**Auth Required:** No (the intent cookie identifies the user)
+
+---
+
+### GET /api/v1/auth/{provider}/callback
+
+Single callback for login and linking. Validates the `state` cookie and exchanges the code (PKCE). Only a provider-verified email is accepted.
+
+- **With `oauthLinkIntent` cookie (linking):** consumes the intent and links the provider to that user.
+  - Success: `FRONTEND_URL/settings/account?linked={provider}`
+  - Errors: `FRONTEND_URL/settings/account?error={oauth_failed|link_expired|already_linked|{provider}_verified_email_required}`
+- **Without it (login/register):** finds or creates the user and sets the refresh cookie (session); no token goes in the URL. The front gets an access token from `POST /api/v1/auth/refresh`.
+  - Onboarding pending: `FRONTEND_URL/onboarding`
+  - Existing user: `FRONTEND_URL/dashboard`
+  - Errors: `FRONTEND_URL/login?error={oauth_failed|account_exists|{provider}_verified_email_required}`
 
 **Auth Required:** No
-
-**Query Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| code | string | Google authorization code |
-| state | string | (link flows) `link:{userId}` |
-
-**Redirects:** Same as GitHub callback.
-
----
-
-### GET /api/v1/auth/google/link
-
-Start Google account linking for an authenticated user.
-
-**Auth Required:** Yes
-
----
-
-### GET /api/v1/auth/google/link/callback
-
-Complete Google account linking.
-
-**Auth Required:** Yes
-
-**Redirects:** Same pattern as GitHub link callback.
 
 ---
 

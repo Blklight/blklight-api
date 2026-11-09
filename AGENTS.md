@@ -4,12 +4,11 @@ REST API built with Fastify, auth-first, growing into full CRUD capabilities.
 
 ## Current Status
 
-Baseline atual: 168 testes / 0 failed. Último trabalho: itens P do
-`docs/QUALITY_REPORT.md` (sandbox desligado por padrão, `TRUST_PROXY`, rate
-limits por usuário, pbkdf2 assíncrono, hash dos tokens de e-mail, URLs só
-http(s), constraint única em `follows` com a migration 0024). Pendente: sandbox
-isolado de verdade e atualização das dependências com vulnerabilidades.
-Future: comments (post-MVP).
+Baseline atual: 178 testes / 0 failed, `tsc` sem erros. Último trabalho: itens
+P e M de `docs/QUALITY_REPORT.md` (sandbox em QuickJS num worker, OAuth com
+state/PKCE e vínculo por intenção de uso único, dependências sem
+vulnerabilidades altas, `TRUST_PROXY`, rate limits por usuário, migrations 0024
+de `follows` e 0025 de índices). Future: comments (post-MVP).
 
 > Inventário completo de rotas (admin, auth, pública) em `ADMIN_ROUTES.md` (não commitável).
 
@@ -255,7 +254,7 @@ src/
   utils/
     crypto.ts       - Password hashing + document signing utilities
     errors.ts       - Custom error classes
-    sandbox.ts      - Code execution sandbox using node:vm
+    sandbox.ts      - Code execution sandbox (QuickJS in a worker thread)
     cursor.ts       - Cursor encoding/decoding for pagination
     toc.ts          - Table of contents extraction from TipTap JSON
   hooks/
@@ -846,7 +845,7 @@ API docs at http://localhost:3000/docs
 - **publishDocument() resolves profiles.id → users.id internally** before calling signDocument()
 - **Content edits on published documents do NOT reset authorship/status/publishedAt** — authorship is immutable metadata of "who published what, when"; its integrity is not actively verified (verifyDocument has no runtime call sites), so it may become stale vs. post-publish edits; revisit if a public authenticity endpoint is ever added
 - **correct_index and expected_output are NEVER returned to readers** — stripped from exercise responses
-- **Code exercises validated via node:vm with 3s timeout** — pure JavaScript and TypeScript (transpiled via esbuild). **UNSAFE: node:vm is not an isolation boundary** (host `Function` reachable via injected objects), so `FEATURE_CODE_SANDBOX` defaults to false until execution moves to a real sandbox
+- **Code exercises run in QuickJS (`quickjs-emscripten`, WASM) inside a worker thread** — 3s timeout (monotonic, also covers promise jobs), 32 MB guest memory, 512 KB stack, 64 KB of captured logs, at most 4 concurrent runs. Pure JavaScript and TypeScript (transpiled via esbuild). Never go back to `node:vm`: it is not an isolation boundary (the host `Function` is reachable through injected objects)
 - **SupportedLanguage: 'javascript' | 'typescript'** — extensible for future languages without refactor
 - **Login identifier can be email (contains '@') or username** — detected by presence of '@' character
 - **exercise_submissions uses upsert** — one row per (user_id, exercise_id)
@@ -1099,7 +1098,7 @@ Apps available at launch (seeded in `db/seed.ts`):
 - **Always import features from features.ts — never read FEATURE\_\* env vars directly**
 - **requireFeature() throws 503 — use in route handlers only**
 - **Service-level checks use if (!features.x) return — silent skip**
-- **Default state: email=false, oauth=false, emailQueue=false, codeSandbox=false, memory=true**
+- **Default state: email=false, oauth=false, emailQueue=false, codeSandbox=true, memory=true**
 - **memory=true by default** — safe, degrades gracefully if GEMINI_API_KEY is missing
 - **Enabling oauth requires all 4 OAuth env vars to be set**
 - **Enabling email requires RESEND_API_KEY and EMAIL_FROM**
@@ -1154,14 +1153,10 @@ Apps available at launch (seeded in `db/seed.ts`):
 
 | Method | Endpoint                              | Auth | Description                               |
 | ------ | ------------------------------------- | ---- | ----------------------------------------- |
-| GET    | /api/v1/auth/github                   | No   | Redirect to GitHub OAuth                  |
-| GET    | /api/v1/auth/github/callback          | No   | GitHub OAuth callback                     |
-| GET    | /api/v1/auth/github/link              | Yes  | Start GitHub account linking              |
-| GET    | /api/v1/auth/github/link/callback     | Yes  | GitHub linking callback                   |
-| GET    | /api/v1/auth/google                   | No   | Redirect to Google OAuth                  |
-| GET    | /api/v1/auth/google/callback          | No   | Google OAuth callback                     |
-| GET    | /api/v1/auth/google/link              | Yes  | Start Google account linking              |
-| GET    | /api/v1/auth/google/link/callback     | Yes  | Google linking callback                   |
+| GET    | /api/v1/auth/:provider                | No   | Redirect to GitHub/Google OAuth (state + PKCE cookies) |
+| POST   | /api/v1/auth/:provider/link           | Yes  | Create a single-use link intent (httpOnly cookie)      |
+| GET    | /api/v1/auth/:provider/link/start     | No   | Redirect to the provider when the intent cookie is live |
+| GET    | /api/v1/auth/:provider/callback       | No   | Callback for login and linking (link cookie decides)   |
 | DELETE | /api/v1/auth/account/unlink/:provider | Yes  | Unlink OAuth provider                     |
 
 ## Profile Routes

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, unique, index } from 'drizzle-orm/pg-core';
 import { documents } from '../documents/documents.schema';
 import { profiles } from '../profiles/profiles.schema';
 
@@ -9,6 +9,7 @@ export const documentLikes = pgTable('document_likes', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   profileDocumentUnique: unique().on(table.profileId, table.documentId),
+  documentIdx: index('document_likes_document_id_idx').on(table.documentId),
 }));
 
 export type DocumentLike = typeof documentLikes.$inferSelect;

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, index } from 'drizzle-orm/pg-core';
 import { users } from '../auth/auth.schema';
 import { workspaces } from '../workspace/workspace.schema';
 import { highlights } from '../highlights/highlights.schema';
@@ -12,7 +12,9 @@ export const journals = pgTable('journals', {
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  workspaceIdx: index('journals_workspace_id_idx').on(table.workspaceId),
+}));
 
 export const journalHighlights = pgTable('journal_highlights', {
   id: text('id').primaryKey(),
@@ -20,7 +22,9 @@ export const journalHighlights = pgTable('journal_highlights', {
   highlightId: text('highlight_id').notNull().references(() => highlights.id),
   position: integer('position').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  journalIdx: index('journal_highlights_journal_id_idx').on(table.journalId),
+}));
 
 export type Journal = typeof journals.$inferSelect;
 export type NewJournal = typeof journals.$inferInsert;

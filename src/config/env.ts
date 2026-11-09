@@ -105,8 +105,8 @@ const envSchema = z
     CORS_ORIGIN: z.string().default("http://localhost:3000"),
     /**
      * Fastify trustProxy. Unset = do not trust X-Forwarded-*. Behind a proxy set
-     * the hop count ("1") or the proxy IPs/CIDRs ("10.0.0.0/8,127.0.0.1"), or
-     * request.ip is the proxy's and every per-IP rate limit becomes global.
+     * the proxy IPs/CIDRs ("10.0.0.0/8,127.0.0.1"), or request.ip is the
+     * proxy's and every per-IP rate limit becomes global. Hop counts are rejected.
      */
     TRUST_PROXY: z.string().optional(),
     COOKIE_SAMESITE: z.enum(["strict", "lax", "none"]).default("strict"),
@@ -126,9 +126,8 @@ const envSchema = z
     FEATURE_EMAIL: booleanFromEnvDefault(false),
     FEATURE_OAUTH: booleanFromEnvDefault(false),
     FEATURE_EMAIL_QUEUE: booleanFromEnvDefault(false),
-    // node:vm is not an isolation boundary: submitted code can reach the host
-    // process. Keep off until execution moves to a real sandbox.
-    FEATURE_CODE_SANDBOX: booleanFromEnvDefault(false),
+    // Submitted code runs in QuickJS (WASM) inside a worker thread; see utils/sandbox.ts.
+    FEATURE_CODE_SANDBOX: booleanFromEnvDefault(true),
     FEATURE_MEMORY: booleanFromEnvDefault(true),
     GEMINI_API_KEY: z.string().optional(),
     ADMIN_EMAIL: z.string().email().optional(),
@@ -185,6 +184,7 @@ const envSchema = z
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
         "OAUTH_REDIRECT_BASE_URL",
+        "FRONTEND_URL",
       ];
       for (const field of oauthFields) {
         if (!data[field as keyof typeof data]) {
@@ -230,7 +230,7 @@ type Env = z.infer<typeof envSchema> & {
   /** Bare origins allowed by @fastify/cors. Never contains "*". */
   CORS_ORIGINS: string[];
   /** Value for Fastify's trustProxy option, derived from TRUST_PROXY. */
-  TRUST_PROXY_VALUE: boolean | number | string[];
+  TRUST_PROXY_VALUE: boolean | string[];
 };
 
 export const env: Env = {

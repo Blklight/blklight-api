@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, unique, index } from 'drizzle-orm/pg-core';
 
 export const categories = pgTable('categories', {
   id: text('id').primaryKey(),
@@ -16,6 +16,7 @@ export const documentCategories = pgTable('document_categories', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   documentUnique: unique().on(table.documentId),
+  categoryIdx: index('document_categories_category_id_idx').on(table.categoryId),
 }));
 
 export type Category = typeof categories.$inferSelect;

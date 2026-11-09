@@ -1,186 +1,153 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { OAuth2Namespace } from '@fastify/oauth2';
 import {
   fetchGitHubUser,
   fetchGoogleUser,
   handleOAuthLogin,
   handleOAuthLink,
   unlinkProvider,
+  type OAuthUser,
 } from './oauth.service';
 import { env } from '../../config/env';
 import { createSessionWithReply } from './auth.service';
 import { requireFeature } from '../../config/features';
+import { ConflictError } from '../../utils/errors';
+import {
+  LINK_INTENT_TTL_MS,
+  consumeLinkIntent,
+  createLinkIntent,
+  peekLinkIntent,
+  type OAuthProvider,
+} from './oauth-link-intents';
 
-let appInstance: FastifyInstance | null = null;
+const LINK_COOKIE = 'oauthLinkIntent';
+const LINK_COOKIE_PATH = '/api/v1/auth';
 
-async function getApp(): Promise<FastifyInstance> {
-  if (!appInstance) {
-    const { buildApp } = await import('../../app');
-    appInstance = await buildApp();
-  }
-  return appInstance;
+interface ProviderConfig {
+  provider: OAuthProvider;
+  label: string;
+  client: (app: FastifyInstance) => OAuth2Namespace;
+  fetchUser: (accessToken: string) => Promise<OAuthUser>;
+}
+
+const PROVIDERS: ProviderConfig[] = [
+  { provider: 'github', label: 'GitHub', client: (app) => app.githubOAuth2, fetchUser: fetchGitHubUser },
+  { provider: 'google', label: 'Google', client: (app) => app.googleOAuth2, fetchUser: fetchGoogleUser },
+];
+
+function linkCookieOptions(maxAgeSeconds?: number) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: env.NODE_ENV === 'production',
+    path: LINK_COOKIE_PATH,
+    ...(maxAgeSeconds === undefined ? {} : { maxAge: maxAgeSeconds }),
+  };
+}
+
+function frontend(path: string): string {
+  return `${env.FRONTEND_URL}${path}`;
 }
 
 export default async function oauthRoutes(app: FastifyInstance) {
-  const githubOAuth = app.githubOAuth2;
-  const googleOAuth = app.googleOAuth2;
-
-  app.get('/github', {
-    schema: { summary: 'Redirect to GitHub OAuth', tags: ['oauth'] },
-  }, async (_request: FastifyRequest, reply: FastifyReply) => {
-    requireFeature('oauth');
-
-    const redirectUrl = await githubOAuth.generateAuthorizationUri({ scope: ['user:email'] });
-    return reply.redirect(redirectUrl);
-  });
-
-  app.get('/github/callback', {
-    schema: { summary: 'GitHub OAuth callback', tags: ['oauth'] },
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    requireFeature('oauth');
-
-    const { code } = request.query as { code?: string };
-    if (!code) {
-      return reply.redirect(`${env.FRONTEND_URL}/login?error=missing_code`);
-    }
-    
-    const tokenResult = await githubOAuth.getAccessTokenFromAuthorizationCodeFlow({ code });
-    const githubUser = await fetchGitHubUser(tokenResult.token.access_token);
-
-    if (!githubUser.email) {
-      return reply.redirect(`${env.FRONTEND_URL}/login?error=github_email_required`);
-    }
-
-    const result = await handleOAuthLogin('github', githubUser.id, githubUser.email);
-
-    if (!result.onboardingComplete) {
-      const tokenApp = await getApp();
-      const jwt = await (tokenApp.jwt.sign as Function)(
-        { userId: result.userId, email: '', role: 'user' },
-        { expiresIn: env.JWT_ACCESS_EXPIRES_IN }
-      );
-      return reply.redirect(`${env.FRONTEND_URL}/onboarding?token=${jwt}`);
-    }
-
-    await createSessionWithReply(result.userId, reply);
-    return reply.redirect(`${env.FRONTEND_URL}/dashboard`);
-  });
-
-  app.get('/github/link', {
-    preHandler: [(request: FastifyRequest, reply: FastifyReply) => app.authenticate(request, reply)],
-    schema: { summary: 'Link GitHub account (start)', tags: ['oauth'] },
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    requireFeature('oauth');
-
-    const userId = request.user.userId;
-    const redirectUrl = await githubOAuth.generateAuthorizationUri({
-      scope: ['user:email'],
-      state: `link:${userId}`,
+  for (const { provider, label, client, fetchUser } of PROVIDERS) {
+    // Login/register. The plugin stores a random state in a cookie and checks
+    // it on the callback (CSRF), plus a PKCE verifier.
+    app.get(`/${provider}`, {
+      schema: { summary: `Redirect to ${label} OAuth`, tags: ['oauth'] },
+    }, async (request: FastifyRequest, reply: FastifyReply) => {
+      requireFeature('oauth');
+      reply.clearCookie(LINK_COOKIE, linkCookieOptions());
+      const uri = await client(app).generateAuthorizationUri(request, reply);
+      return reply.redirect(uri);
     });
-    return reply.redirect(redirectUrl);
-  });
 
-  app.get('/github/link/callback', {
-    preHandler: [(request: FastifyRequest, reply: FastifyReply) => app.authenticate(request, reply)],
-    schema: { summary: 'Link GitHub account (callback)', tags: ['oauth'] },
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    requireFeature('oauth');
-
-    const { code, state } = request.query as Record<string, string>;
-    const userId = request.user.userId;
-
-    if (!state?.startsWith('link:') || !code) {
-      return reply.redirect(`${env.FRONTEND_URL}/settings/account?error=invalid_state`);
-    }
-
-    const tokenResult = await githubOAuth.getAccessTokenFromAuthorizationCodeFlow({ code });
-    const githubUser = await fetchGitHubUser(tokenResult.token.access_token);
-
-    if (!githubUser.email) {
-      return reply.redirect(`${env.FRONTEND_URL}/settings/account?error=github_email_required`);
-    }
-
-    await handleOAuthLink(userId, 'github', githubUser.id);
-    return reply.redirect(`${env.FRONTEND_URL}/settings/account?linked=github`);
-  });
-
-  app.get('/google', {
-    schema: { summary: 'Redirect to Google OAuth', tags: ['oauth'] },
-  }, async (_request: FastifyRequest, reply: FastifyReply) => {
-    requireFeature('oauth');
-
-    const redirectUrl = await googleOAuth.generateAuthorizationUri({ scope: ['profile', 'email'] });
-    return reply.redirect(redirectUrl);
-  });
-
-  app.get('/google/callback', {
-    schema: { summary: 'Google OAuth callback', tags: ['oauth'] },
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    requireFeature('oauth');
-
-    const { code } = request.query as { code?: string };
-    if (!code) {
-      return reply.redirect(`${env.FRONTEND_URL}/login?error=missing_code`);
-    }
-
-    const tokenResult = await googleOAuth.getAccessTokenFromAuthorizationCodeFlow({ code });
-    const googleUser = await fetchGoogleUser(tokenResult.token.access_token);
-
-    if (!googleUser.email) {
-      return reply.redirect(`${env.FRONTEND_URL}/login?error=google_email_required`);
-    }
-
-    const result = await handleOAuthLogin('google', googleUser.id, googleUser.email);
-
-    if (!result.onboardingComplete) {
-      const tokenApp = await getApp();
-      const jwt = await (tokenApp.jwt.sign as Function)(
-        { userId: result.userId, email: '', role: 'user' },
-        { expiresIn: env.JWT_ACCESS_EXPIRES_IN }
-      );
-      return reply.redirect(`${env.FRONTEND_URL}/onboarding?token=${jwt}`);
-    }
-
-    await createSessionWithReply(result.userId, reply);
-    return reply.redirect(`${env.FRONTEND_URL}/dashboard`);
-  });
-
-  app.get('/google/link', {
-    preHandler: [(request: FastifyRequest, reply: FastifyReply) => app.authenticate(request, reply)],
-    schema: { summary: 'Link Google account (start)', tags: ['oauth'] },
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    requireFeature('oauth');
-
-    const userId = request.user.userId;
-    const redirectUrl = await googleOAuth.generateAuthorizationUri({
-      scope: ['profile', 'email'],
-      state: `link:${userId}`,
+    // Linking, step 1 (fetch with the Bearer token): binds the intent to this
+    // browser through an httpOnly cookie, then the front navigates to `url`.
+    app.post(`/${provider}/link`, {
+      preHandler: [(request: FastifyRequest, reply: FastifyReply) => app.authenticate(request, reply)],
+      schema: { summary: `Link ${label} account (start)`, tags: ['oauth'], security: [{ bearerAuth: [] }] },
+    }, async (request: FastifyRequest, reply: FastifyReply) => {
+      requireFeature('oauth');
+      const intent = createLinkIntent(request.user.userId, provider);
+      reply.setCookie(LINK_COOKIE, intent, linkCookieOptions(LINK_INTENT_TTL_MS / 1000));
+      return reply.send({
+        data: { url: `${env.OAUTH_REDIRECT_BASE_URL}${LINK_COOKIE_PATH}/${provider}/link/start` },
+        error: null,
+        message: 'Link intent created',
+      });
     });
-    return reply.redirect(redirectUrl);
-  });
 
-  app.get('/google/link/callback', {
-    preHandler: [(request: FastifyRequest, reply: FastifyReply) => app.authenticate(request, reply)],
-    schema: { summary: 'Link Google account (callback)', tags: ['oauth'] },
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    requireFeature('oauth');
+    // Linking, step 2 (browser navigation): only proceeds with a live intent.
+    app.get(`/${provider}/link/start`, {
+      schema: { summary: `Link ${label} account (redirect)`, tags: ['oauth'] },
+    }, async (request: FastifyRequest, reply: FastifyReply) => {
+      requireFeature('oauth');
+      if (!peekLinkIntent(request.cookies[LINK_COOKIE], provider)) {
+        return reply.redirect(frontend('/settings/account?error=link_expired'));
+      }
+      const uri = await client(app).generateAuthorizationUri(request, reply);
+      return reply.redirect(uri);
+    });
 
-    const { code, state } = request.query as Record<string, string>;
-    const userId = request.user.userId;
+    // Single callback for both flows: the provider always returns to the
+    // configured callbackUri, and the link cookie tells the flows apart.
+    app.get(`/${provider}/callback`, {
+      schema: { summary: `${label} OAuth callback`, tags: ['oauth'] },
+    }, async (request: FastifyRequest, reply: FastifyReply) => {
+      requireFeature('oauth');
 
-    if (!state?.startsWith('link:') || !code) {
-      return reply.redirect(`${env.FRONTEND_URL}/settings/account?error=invalid_state`);
-    }
+      const intentId = request.cookies[LINK_COOKIE];
+      const linking = intentId !== undefined;
+      const errorBase = linking ? '/settings/account?error=' : '/login?error=';
+      if (linking) reply.clearCookie(LINK_COOKIE, linkCookieOptions());
 
-    const tokenResult = await googleOAuth.getAccessTokenFromAuthorizationCodeFlow({ code });
-    const googleUser = await fetchGoogleUser(tokenResult.token.access_token);
+      let profile: OAuthUser;
+      try {
+        // Validates the state cookie and exchanges the code (with PKCE).
+        const token = await client(app).getAccessTokenFromAuthorizationCodeFlow(request, reply);
+        profile = await fetchUser(token.token.access_token);
+      } catch (error) {
+        request.log.warn({ err: error, provider }, 'oauth callback rejected');
+        return reply.redirect(frontend(`${errorBase}oauth_failed`));
+      }
 
-    if (!googleUser.email) {
-      return reply.redirect(`${env.FRONTEND_URL}/settings/account?error=google_email_required`);
-    }
+      if (!profile.email) {
+        return reply.redirect(frontend(`${errorBase}${provider}_verified_email_required`));
+      }
 
-    await handleOAuthLink(userId, 'google', googleUser.id);
-    return reply.redirect(`${env.FRONTEND_URL}/settings/account?linked=google`);
-  });
+      if (linking) {
+        const userId = consumeLinkIntent(intentId, provider);
+        if (!userId) {
+          return reply.redirect(frontend('/settings/account?error=link_expired'));
+        }
+        try {
+          await handleOAuthLink(userId, provider, profile.id);
+        } catch (error) {
+          if (error instanceof ConflictError) {
+            return reply.redirect(frontend('/settings/account?error=already_linked'));
+          }
+          throw error;
+        }
+        return reply.redirect(frontend(`/settings/account?linked=${provider}`));
+      }
+
+      let result: Awaited<ReturnType<typeof handleOAuthLogin>>;
+      try {
+        result = await handleOAuthLogin(provider, profile.id, profile.email);
+      } catch (error) {
+        // An account with this email exists: the user must log in and link.
+        if (error instanceof ConflictError) {
+          return reply.redirect(frontend('/login?error=account_exists'));
+        }
+        throw error;
+      }
+      // Session travels in the httpOnly refresh cookie, never in the URL; the
+      // front obtains an access token through /auth/refresh.
+      await createSessionWithReply(result.userId, reply);
+      return reply.redirect(frontend(result.onboardingComplete ? '/dashboard' : '/onboarding'));
+    });
+  }
 
   app.delete('/account/unlink/:provider', {
     preHandler: [(request: FastifyRequest, reply: FastifyReply) => app.authenticate(request, reply)],
@@ -200,7 +167,7 @@ export default async function oauthRoutes(app: FastifyInstance) {
     requireFeature('oauth');
 
     const { userId } = request.user;
-    const params = request.params as { provider: 'github' | 'google' };
+    const params = request.params as { provider: OAuthProvider };
     await unlinkProvider(userId, params.provider);
 
     reply.send({

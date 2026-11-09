@@ -297,10 +297,10 @@ Memory indexing hook added: documents indexed on publish, removed on delete.
 | Method | Endpoint                              | Exposed    |
 | ------ | ------------------------------------- | ---------- |
 | DELETE | /api/v1/profiles/me                   | Yes        |
-| GET    | /api/v1/auth/github/link              | Yes (flag) |
-| GET    | /api/v1/auth/github/link/callback     | Yes (flag) |
-| GET    | /api/v1/auth/google/link              | Yes (flag) |
-| GET    | /api/v1/auth/google/link/callback     | Yes (flag) |
+| POST   | /api/v1/auth/github/link              | Yes (flag) |
+| GET    | /api/v1/auth/github/link/start        | Cookie (flag) |
+| POST   | /api/v1/auth/google/link              | Yes (flag) |
+| GET    | /api/v1/auth/google/link/start        | Cookie (flag) |
 | DELETE | /api/v1/auth/account/unlink/:provider | Yes        |
 
 ### Tests to pass before Beta release
