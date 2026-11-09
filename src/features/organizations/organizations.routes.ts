@@ -10,6 +10,7 @@ import {
   inviteMember,
   decideMembership,
   removeMember,
+  leaveOrganization,
   listMembers,
   getOrganizationByOrgname,
 } from './organizations.service';
@@ -377,6 +378,33 @@ export default async function organizationRoutes(app: FastifyInstance) {
         data: member,
         error: null,
         message: `Invitation ${parsed.data.decision}`,
+      });
+    });
+
+    app.delete('/organizations/:id/members/me', {
+      schema: {
+        summary: 'Leave an organization',
+        description: 'Any member can leave. The owner cannot.',
+        tags: ['organizations'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: { id: { type: 'string' } },
+          required: ['id'],
+        },
+        response: {
+          200: NEUTRAL,
+        },
+      },
+    }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const profileId = await resolveProfileIdFromUserId(request.user.userId);
+
+      await leaveOrganization(request.params.id, profileId);
+
+      reply.send({
+        data: null,
+        error: null,
+        message: 'Left organization',
       });
     });
 

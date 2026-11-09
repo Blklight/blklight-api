@@ -885,3 +885,35 @@ describe('organization document listing', () => {
     expect(authorBody.data.items.map((item) => item.id)).toEqual([id]);
   });
 });
+
+describe('organization membership lifecycle', () => {
+  it('lets a manager invite again after the profile rejected the first invite', async () => {
+    const owner = await createAccount('reinvown');
+    const target = await createAccount('reinvtgt');
+    const org = await createOrganization(owner, 'Reinvite Org');
+
+    await inviteMember(org.id, owner.profileId, target.profileId);
+    await decideMembership(org.id, target.profileId, 'rejected');
+
+    const reinvite = await api(owner, 'POST', `/api/v1/organizations/${org.id}/invite`, {
+      profileId: target.profileId,
+    });
+    expect(reinvite.statusCode).toBeLessThan(300);
+
+    const accepted = await decideMembership(org.id, target.profileId, 'accepted');
+    expect(accepted.status).toBe('accepted');
+  });
+
+  it('lets a member leave, but not the owner', async () => {
+    const owner = await createAccount('leaveown');
+    const member = await createAccount('leavemem');
+    const org = await createOrganization(owner, 'Leave Self Org');
+    await acceptMembership(org, owner, member);
+
+    const left = await api(member, 'DELETE', `/api/v1/organizations/${org.id}/members/me`);
+    expect(left.statusCode).toBe(200);
+
+    const ownerLeave = await api(owner, 'DELETE', `/api/v1/organizations/${org.id}/members/me`);
+    expect(ownerLeave.statusCode).toBe(403);
+  });
+});

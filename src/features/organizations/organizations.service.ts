@@ -425,6 +425,17 @@ export async function inviteMember(
 
   const existing = await getMembership(orgId, targetProfileId);
 
+  // A rejected invite keeps its row (unique org+profile): reopen it instead of
+  // treating the profile as a member forever.
+  if (existing?.status === 'rejected') {
+    const [reopened] = await db
+      .update(organizationMembers)
+      .set({ status: 'pending', role: 'member', invitedBy: inviterProfileId, requestedAt: new Date(), decidedAt: null })
+      .where(eq(organizationMembers.id, existing.id))
+      .returning();
+    return reopened!;
+  }
+
   if (existing) {
     throw new ConflictError('Profile is already a member of this organization');
   }
@@ -504,6 +515,29 @@ export async function removeMember(
   await db
     .delete(organizationMembers)
     .where(eq(organizationMembers.id, member.id));
+}
+
+/**
+ * Leave an organization. Any member can leave; the owner cannot (transfer
+ * ownership first).
+ * @param orgId - The organization ID
+ * @param profileId - The leaving profile's ID
+ * @throws NotFoundError if the profile has no membership
+ * @throws ForbiddenError if the profile is the owner
+ */
+export async function leaveOrganization(orgId: string, profileId: string): Promise<void> {
+  const org = await assertOrganizationExists(orgId);
+
+  if (org.ownerId === profileId) {
+    throw new ForbiddenError('The organization owner cannot leave');
+  }
+
+  const member = await getMembership(orgId, profileId);
+  if (!member) {
+    throw new NotFoundError('Member not found');
+  }
+
+  await db.delete(organizationMembers).where(eq(organizationMembers.id, member.id));
 }
 
 /**
