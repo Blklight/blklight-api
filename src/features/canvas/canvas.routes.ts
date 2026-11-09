@@ -13,7 +13,7 @@ export default async function canvasRoutes(app: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },

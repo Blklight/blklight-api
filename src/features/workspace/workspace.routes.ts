@@ -95,7 +95,7 @@ export default async function workspaceRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },

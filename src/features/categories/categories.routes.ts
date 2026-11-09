@@ -124,7 +124,7 @@ export default async function categoryRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },
@@ -177,7 +177,7 @@ export default async function categoryRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },
@@ -247,7 +247,7 @@ export default async function categoryRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },

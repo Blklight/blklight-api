@@ -112,17 +112,17 @@ export default async function styleTemplateRoutes(app: FastifyInstance) {
           name: { type: 'string', minLength: 1, maxLength: 50 },
           documentType: { type: ['string', 'null'] },
           typography: { type: 'string', enum: ['sans', 'serif', 'mono'] },
-          paperStyle: { type: 'object' },
-          paperTexture: { type: 'object' },
-          documentHeader: { type: 'object' },
-          documentFooter: { type: 'object' },
+          paperStyle: { type: 'object', additionalProperties: true },
+          paperTexture: { type: 'object', additionalProperties: true },
+          documentHeader: { type: 'object', additionalProperties: true },
+          documentFooter: { type: 'object', additionalProperties: true },
         },
       },
       response: {
         201: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },

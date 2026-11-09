@@ -47,7 +47,7 @@ export default async function documentHighlightRoutes(app: FastifyInstance) {
         201: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -56,7 +56,7 @@ export default async function documentHighlightRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },
