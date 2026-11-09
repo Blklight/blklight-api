@@ -58,7 +58,7 @@ import {
   refreshSession,
   logout,
 } from '../../src/features/auth/auth.service';
-import { getRefreshTtlSeconds } from '../../src/config/cookies';
+import { buildSessionRefreshCookieOptions, getRefreshTtlSeconds } from '../../src/config/cookies';
 import { hashRefreshToken } from '../../src/utils/crypto';
 import { UnauthorizedError } from '../../src/utils/errors';
 
@@ -284,5 +284,16 @@ describe('getRefreshTtlSeconds', () => {
     expect(getRefreshTtlSeconds(true)).toBe(2592000);
     expect(getRefreshTtlSeconds(undefined)).toBe(604800);
     expect(Number.isInteger(getRefreshTtlSeconds(true))).toBe(true);
+  });
+});
+
+describe('buildSessionRefreshCookieOptions', () => {
+  it('omits Max-Age without rememberMe so the cookie ends with the browser', () => {
+    expect(buildSessionRefreshCookieOptions(false).maxAge).toBeUndefined();
+    expect(buildSessionRefreshCookieOptions(undefined).maxAge).toBeUndefined();
+  });
+
+  it('sets the remember-me TTL as Max-Age with rememberMe', () => {
+    expect(buildSessionRefreshCookieOptions(true).maxAge).toBe(2592000);
   });
 });
