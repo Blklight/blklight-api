@@ -60,7 +60,8 @@ export default async function tutorialExerciseRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     const { id } = request.params;
 
-    const exercises = await getExercises(id);
+    const profileId = await resolveProfileIdFromUserId(request.user.userId);
+    const exercises = await getExercises(id, profileId);
 
     reply.send({
       data: exercises,
