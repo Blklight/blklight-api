@@ -148,6 +148,13 @@
       "when": 1794254593149,
       "tag": "0024_tan_beyonder",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794262459250,
+      "tag": "0025_handy_talon",
+      "breakpoints": true
     }
   ]
 }

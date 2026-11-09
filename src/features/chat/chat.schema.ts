@@ -21,6 +21,7 @@ export const chatServerMembers = pgTable('chat_server_members', {
   decidedAt: timestamp('decided_at'),
 }, (table) => ({
   serverProfileUnique: unique().on(table.serverId, table.profileId),
+  profileIdx: index('chat_server_members_profile_id_idx').on(table.profileId),
 }));
 
 export const chatChannels = pgTable('chat_channels', {
@@ -30,7 +31,9 @@ export const chatChannels = pgTable('chat_channels', {
   type: text('type').notNull().default('text'),
   position: integer('position').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  serverIdx: index('chat_channels_server_id_idx').on(table.serverId),
+}));
 
 export const chatMessages = pgTable('chat_messages', {
   id: text('id').primaryKey(),

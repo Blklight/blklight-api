@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, unique, index } from 'drizzle-orm/pg-core';
 import { profiles } from '../profiles/profiles.schema';
 
 export const organizations = pgTable('organizations', {
@@ -23,6 +23,7 @@ export const organizationMembers = pgTable('organization_members', {
   decidedAt: timestamp('decided_at'),
 }, (table) => ({
   orgProfileUnique: unique().on(table.orgId, table.profileId),
+  profileIdx: index('organization_members_profile_id_idx').on(table.profileId),
 }));
 
 export type Organization = typeof organizations.$inferSelect;
