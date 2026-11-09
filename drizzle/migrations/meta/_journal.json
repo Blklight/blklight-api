@@ -141,6 +141,13 @@
       "when": 1792624139459,
       "tag": "0023_solid_jimmy_woo",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794254593149,
+      "tag": "0024_tan_beyonder",
+      "breakpoints": true
     }
   ]
 }

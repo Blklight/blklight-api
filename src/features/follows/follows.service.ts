@@ -148,12 +148,21 @@ export async function followProfile(
 
   const status = targetProfile?.isPrivate ? 'pending' : 'accepted';
 
-  await db.insert(follows).values({
-    id: createId(),
-    followerId: followerProfileId,
-    followingId: followingProfileId,
-    status,
-  });
+  const inserted = await db
+    .insert(follows)
+    .values({
+      id: createId(),
+      followerId: followerProfileId,
+      followingId: followingProfileId,
+      status,
+    })
+    .onConflictDoNothing({ target: [follows.followerId, follows.followingId] })
+    .returning({ id: follows.id });
+
+  // A concurrent request (double click) inserted the row first.
+  if (inserted.length === 0) {
+    throw new ConflictError('Already following');
+  }
 
   return { status };
 }
