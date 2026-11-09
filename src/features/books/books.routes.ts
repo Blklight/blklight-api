@@ -52,7 +52,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -61,7 +61,7 @@ export default async function bookRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },
@@ -111,7 +111,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -120,7 +120,7 @@ export default async function bookRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },
@@ -239,7 +239,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         201: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -248,7 +248,7 @@ export default async function bookRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },
@@ -323,7 +323,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -332,7 +332,7 @@ export default async function bookRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },
@@ -397,7 +397,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -507,7 +507,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         201: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -516,7 +516,7 @@ export default async function bookRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },
@@ -590,7 +590,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -599,7 +599,7 @@ export default async function bookRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },
@@ -740,7 +740,7 @@ export default async function bookRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },
@@ -832,7 +832,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -841,7 +841,7 @@ export default async function bookRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },

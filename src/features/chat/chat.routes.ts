@@ -103,7 +103,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         201: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -190,7 +190,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -232,7 +232,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         201: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -319,7 +319,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -404,7 +404,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         201: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -493,7 +493,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         201: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },
@@ -596,7 +596,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            data: { type: 'object' },
+            data: { type: 'object', additionalProperties: true },
             error: { type: 'null' },
             message: { type: 'string' },
           },

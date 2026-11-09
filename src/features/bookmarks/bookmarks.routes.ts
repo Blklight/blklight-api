@@ -104,7 +104,7 @@ export default async function bookmarksRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             data: { type: 'null' },
-            error: { type: 'object' },
+            error: { type: 'object', additionalProperties: true },
             message: { type: 'string' },
           },
         },
