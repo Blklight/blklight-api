@@ -193,6 +193,65 @@ export async function setOnboardingUsername(userId: string, username: string): P
   });
 }
 
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Create what every onboarded account owns: profile, authorship signature,
+ * personal workspace and its canvas. Shared by password registration and the
+ * OAuth onboarding completion so both produce the same rows.
+ * @param tx - Open transaction
+ * @param user - The account (createdAt feeds the signature hash)
+ * @param now - Timestamp for the new rows
+ */
+async function insertUserResources(
+  tx: Transaction,
+  user: { id: string; email: string; username: string; createdAt: Date },
+  now: Date
+): Promise<void> {
+  const secret = generateSecret();
+
+  await tx.insert(profiles).values({
+    id: createId(),
+    userId: user.id,
+    username: user.username,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await tx.insert(signatures).values({
+    id: createId(),
+    userId: user.id,
+    userHash: generateUserHash(user.id, user.email, user.createdAt, secret),
+    secretEncrypted: encryptSecret(secret),
+    createdAt: now,
+  });
+
+  const [workspace] = await tx
+    .insert(workspaces)
+    .values({
+      id: createId(),
+      ownerId: user.id,
+      type: 'personal',
+      name: `${user.username}'s workspace`,
+      isPersonal: true,
+      colorLabels: null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning({ id: workspaces.id });
+
+  if (!workspace) {
+    throw new Error('Failed to create workspace');
+  }
+
+  await tx.insert(canvas).values({
+    id: createId(),
+    workspaceId: workspace.id,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
 /**
  * Create the remaining onboarding records for an account.
  * Email accounts already have profile, signature, workspace, and canvas from
@@ -230,54 +289,9 @@ export async function completeOnboarding(userId: string): Promise<User> {
   }
 
   const now = new Date();
-  const secret = generateSecret();
-  const userHash = generateUserHash(user.id, user.email, user.createdAt, secret);
-  const secretEncrypted = encryptSecret(secret);
 
   await db.transaction(async (tx) => {
-    await tx.insert(profiles).values({
-      id: createId(),
-      userId,
-      username: user.username,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await tx.insert(signatures).values({
-      id: createId(),
-      userId,
-      userHash,
-      secretEncrypted,
-      createdAt: now,
-    });
-
-    await tx.insert(workspaces).values({
-      id: createId(),
-      ownerId: userId,
-      type: 'personal',
-      name: `${user.username}'s workspace`,
-      isPersonal: true,
-      colorLabels: null,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    const [newWorkspace] = await tx
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.ownerId, userId))
-      .limit(1);
-
-    if (!newWorkspace) {
-      throw new Error('Failed to create workspace');
-    }
-
-    await tx.insert(canvas).values({
-      id: createId(),
-      workspaceId: newWorkspace.id,
-      createdAt: now,
-      updatedAt: now,
-    });
+    await insertUserResources(tx, user, now);
 
     await tx.update(users).set({ onboardingComplete: true, updatedAt: now }).where(eq(users.id, userId));
   });
@@ -425,50 +439,7 @@ export async function createUser(
       updatedAt: now,
     };
     await tx.insert(users).values(newUser);
-
-    await tx.insert(profiles).values({
-      id: createId(),
-      userId,
-      username: normalizedUsername,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    const secret = generateSecret();
-    const userHash = generateUserHash(userId, email, now, secret);
-    const secretEncrypted = encryptSecret(secret);
-
-    await tx.insert(signatures).values({
-      id: createId(),
-      userId,
-      userHash,
-      secretEncrypted,
-      createdAt: now,
-    });
-
-    await tx.insert(workspaces).values({
-      id: createId(),
-      ownerId: userId,
-      type: 'personal',
-      name: `${normalizedUsername}'s workspace`,
-      isPersonal: true,
-      colorLabels: null,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    const [newWorkspace] = await tx
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.ownerId, userId))
-      .limit(1);
-
-    await tx.insert(canvas).values({
-      id: createId(),
-      workspaceId: newWorkspace!.id,
-      createdAt: now,
-      updatedAt: now,
-    });
+    await insertUserResources(tx, { id: userId, email, username: normalizedUsername, createdAt: now }, now);
   });
 
   const createdUser = await db
