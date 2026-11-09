@@ -1,19 +1,22 @@
-import { pbkdf2Sync, randomBytes, timingSafeEqual, createCipheriv, createDecipheriv, createHmac, createHash, createSecretKey } from 'node:crypto';
+import { pbkdf2, randomBytes, timingSafeEqual, createCipheriv, createDecipheriv, createHmac, createHash, createSecretKey } from 'node:crypto';
+import { promisify } from 'node:util';
 import { env } from '../config/env';
+
+const pbkdf2Async = promisify(pbkdf2);
 
 const ITERATIONS = 120_000;
 const KEY_LENGTH = 128;
 const DIGEST = 'sha512';
 
 /**
- * Hash a password using PBKDF2 with SHA-512.
+ * Hash a password using PBKDF2 with SHA-512, off the event loop (libuv threadpool).
  * 120,000 iterations per OWASP 2024 recommendation for SHA-512.
  * @param password - Plain text password to hash
  * @returns Object containing the base64 hash and base64 salt
  */
-export function hashPassword(password: string): { hash: string; salt: string } {
+export async function hashPassword(password: string): Promise<{ hash: string; salt: string }> {
   const salt = randomBytes(64).toString('base64');
-  const hash = pbkdf2Sync(password, salt, ITERATIONS, KEY_LENGTH, DIGEST).toString('base64');
+  const hash = (await pbkdf2Async(password, salt, ITERATIONS, KEY_LENGTH, DIGEST)).toString('base64');
   return { hash, salt };
 }
 
@@ -24,12 +27,24 @@ export function hashPassword(password: string): { hash: string; salt: string } {
  * @param salt - Stored salt (base64)
  * @returns True if password matches, false otherwise
  */
-export function verifyPassword(password: string, hash: string, salt: string): boolean {
-  const computedHash = pbkdf2Sync(password, salt, ITERATIONS, KEY_LENGTH, DIGEST).toString('base64');
+export async function verifyPassword(password: string, hash: string, salt: string): Promise<boolean> {
+  const computedHash = (await pbkdf2Async(password, salt, ITERATIONS, KEY_LENGTH, DIGEST)).toString('base64');
   if (hash.length !== computedHash.length) {
     return false;
   }
   return timingSafeEqual(Buffer.from(hash), Buffer.from(computedHash));
+}
+
+const DUMMY_SALT = randomBytes(64).toString('base64');
+
+/**
+ * Spend the same work as verifyPassword without a stored hash, so a login for
+ * an unknown or passwordless account takes as long as a wrong password and
+ * response time does not reveal which accounts exist.
+ * @param password - Plain text password from the request
+ */
+export async function verifyPasswordDummy(password: string): Promise<void> {
+  await pbkdf2Async(password, DUMMY_SALT, ITERATIONS, KEY_LENGTH, DIGEST);
 }
 
 /**
@@ -112,6 +127,17 @@ export function generateDocumentHash(content: string): string {
  */
 export function hashRefreshToken(refreshToken: string): string {
   return createHash('sha256').update(refreshToken).digest('hex');
+}
+
+/**
+ * Hash a one-time email token (verification, password reset) for storage.
+ * Same rationale as hashRefreshToken: the link carries 32 random bytes, so a
+ * fast digest is enough, and a leaked row cannot be replayed.
+ * @param token - Plaintext token from the emailed link
+ * @returns SHA-256 hash as hex string
+ */
+export function hashEmailToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
 }
 
 /**

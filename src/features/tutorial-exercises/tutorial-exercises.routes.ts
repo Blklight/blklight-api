@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { perUserRateLimit } from '../../utils/rate-limit';
 import { createExerciseSchema, updateExerciseSchema, submitAnswerSchema } from './tutorial-exercises.zod';
 import {
   createExercise,
@@ -59,7 +60,8 @@ export default async function tutorialExerciseRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     const { id } = request.params;
 
-    const exercises = await getExercises(id);
+    const profileId = await resolveProfileIdFromUserId(request.user.userId);
+    const exercises = await getExercises(id, profileId);
 
     reply.send({
       data: exercises,
@@ -282,6 +284,7 @@ export default async function tutorialExerciseRoutes(app: FastifyInstance) {
   });
 
   app.post('/exercises/:id/submit', {
+    config: { rateLimit: perUserRateLimit(20) },
     schema: {
       summary: 'Submit an answer to an exercise',
       tags: ['tutorial-exercises'],

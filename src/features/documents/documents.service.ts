@@ -83,7 +83,6 @@ export interface DocumentSummary {
 export interface Authorship {
   authorName: string;
   username: string;
-  userHash: string;
   documentHash: string;
   publicIdentifier: string;
   hmac: string;
@@ -513,7 +512,6 @@ export async function publishDocument(
   const authorship: Authorship = {
     authorName: profile.displayName ?? profile.username,
     username: profile.username,
-    userHash: signed.userHash,
     documentHash: signed.documentHash,
     publicIdentifier: signed.publicIdentifier,
     hmac: signed.signature,

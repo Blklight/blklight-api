@@ -4,10 +4,12 @@ REST API built with Fastify, auth-first, growing into full CRUD capabilities.
 
 ## Current Status
 
-Baseline atual: 136 testes / 0 failed. Último trabalho: vínculo
-documento↔organização mutável após publish, escrita atômica de
-documento/categoria/tags, cleanup dos testes de integração por prefixo e
-DEV recriado a partir do reset. Future: comments (post-MVP).
+Baseline atual: 168 testes / 0 failed. Último trabalho: itens P do
+`docs/QUALITY_REPORT.md` (sandbox desligado por padrão, `TRUST_PROXY`, rate
+limits por usuário, pbkdf2 assíncrono, hash dos tokens de e-mail, URLs só
+http(s), constraint única em `follows` com a migration 0024). Pendente: sandbox
+isolado de verdade e atualização das dependências com vulnerabilidades.
+Future: comments (post-MVP).
 
 > Inventário completo de rotas (admin, auth, pública) em `ADMIN_ROUTES.md` (não commitável).
 
@@ -844,7 +846,7 @@ API docs at http://localhost:3000/docs
 - **publishDocument() resolves profiles.id → users.id internally** before calling signDocument()
 - **Content edits on published documents do NOT reset authorship/status/publishedAt** — authorship is immutable metadata of "who published what, when"; its integrity is not actively verified (verifyDocument has no runtime call sites), so it may become stale vs. post-publish edits; revisit if a public authenticity endpoint is ever added
 - **correct_index and expected_output are NEVER returned to readers** — stripped from exercise responses
-- **Code exercises validated via node:vm with 3s timeout** — pure JavaScript and TypeScript (transpiled via esbuild)
+- **Code exercises validated via node:vm with 3s timeout** — pure JavaScript and TypeScript (transpiled via esbuild). **UNSAFE: node:vm is not an isolation boundary** (host `Function` reachable via injected objects), so `FEATURE_CODE_SANDBOX` defaults to false until execution moves to a real sandbox
 - **SupportedLanguage: 'javascript' | 'typescript'** — extensible for future languages without refactor
 - **Login identifier can be email (contains '@') or username** — detected by presence of '@' character
 - **exercise_submissions uses upsert** — one row per (user_id, exercise_id)
@@ -1097,7 +1099,7 @@ Apps available at launch (seeded in `db/seed.ts`):
 - **Always import features from features.ts — never read FEATURE\_\* env vars directly**
 - **requireFeature() throws 503 — use in route handlers only**
 - **Service-level checks use if (!features.x) return — silent skip**
-- **Default state: email=false, oauth=false, emailQueue=false, codeSandbox=true, memory=true**
+- **Default state: email=false, oauth=false, emailQueue=false, codeSandbox=false, memory=true**
 - **memory=true by default** — safe, degrades gracefully if GEMINI_API_KEY is missing
 - **Enabling oauth requires all 4 OAuth env vars to be set**
 - **Enabling email requires RESEND_API_KEY and EMAIL_FROM**

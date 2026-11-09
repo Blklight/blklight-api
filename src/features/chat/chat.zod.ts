@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { httpUrlSchema } from '../../utils/url';
 
 export const createServerSchema = z.object({
   name: z.string().min(1, 'Server name is required').max(100),
-  iconUrl: z.string().url('Invalid URL format').nullable().optional(),
+  iconUrl: httpUrlSchema().nullable().optional(),
 });
 
 export const createChannelSchema = z.object({

@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { perUserRateLimit } from '../../utils/rate-limit';
 import { toggleLike, getLikesCount } from './likes.service';
 import { resolveProfileIdFromUserId } from '../../utils/profile';
 
@@ -27,6 +28,7 @@ interface DocumentParams {
 
 export default async function likesRoutes(app: FastifyInstance) {
   app.post('/documents/:id/like', {
+    config: { rateLimit: perUserRateLimit(30) },
     preHandler: [(request: FastifyRequest, reply: FastifyReply) => app.authenticate(request, reply)],
     schema: {
       summary: 'Toggle like on a document',

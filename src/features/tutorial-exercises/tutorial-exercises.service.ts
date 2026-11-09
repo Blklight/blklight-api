@@ -4,7 +4,7 @@ import { db } from '../../db/index';
 import { tutorialExercises, exerciseSubmissions, TutorialExercise } from './tutorial-exercises.schema';
 import { documents, documentTypes } from '../documents/documents.schema';
 import { executeCode, type SupportedLanguage } from '../../utils/sandbox';
-import { NotFoundError, UnauthorizedError, ValidationError } from '../../utils/errors';
+import { ForbiddenError, NotFoundError, ValidationError } from '../../utils/errors';
 import type { CreateExerciseInput, UpdateExerciseInput, SubmitAnswerInput } from './tutorial-exercises.zod';
 
 export interface SubmissionResult {
@@ -56,7 +56,7 @@ export async function validateTutorialType(documentId: string): Promise<void> {
  * @returns The created exercise
  * @throws NotFoundError if document not found
  * @throws ValidationError if document is not a tutorial
- * @throws UnauthorizedError if author does not own the document
+ * @throws ForbiddenError if author does not own the document
  */
 export async function createExercise(
   authorId: string,
@@ -67,7 +67,7 @@ export async function createExercise(
 
   const docAuthorId = await getDocumentAuthorId(documentId);
   if (docAuthorId !== authorId) {
-    throw new UnauthorizedError('You do not own this document');
+    throw new ForbiddenError('You do not own this document');
   }
 
   const now = new Date();
@@ -98,7 +98,7 @@ export async function createExercise(
  * @param data - The partial exercise data to update
  * @returns The updated exercise
  * @throws NotFoundError if exercise not found
- * @throws UnauthorizedError if author does not own the document
+ * @throws ForbiddenError if author does not own the document
  */
 export async function updateExercise(
   authorId: string,
@@ -118,7 +118,7 @@ export async function updateExercise(
   const exercise = exerciseResult[0]!;
   const docAuthorId = await getDocumentAuthorId(exercise.documentId);
   if (docAuthorId !== authorId) {
-    throw new UnauthorizedError('You do not own this document');
+    throw new ForbiddenError('You do not own this document');
   }
 
   const existingData = exercise.data as Record<string, unknown>;
@@ -144,7 +144,7 @@ export async function updateExercise(
  * @param authorId - The author's profile ID
  * @param id - The exercise ID
  * @throws NotFoundError if exercise not found
- * @throws UnauthorizedError if author does not own the document
+ * @throws ForbiddenError if author does not own the document
  */
 export async function deleteExercise(authorId: string, id: string): Promise<void> {
   const exerciseResult = await db
@@ -160,7 +160,7 @@ export async function deleteExercise(authorId: string, id: string): Promise<void
   const exercise = exerciseResult[0]!;
   const docAuthorId = await getDocumentAuthorId(exercise.documentId);
   if (docAuthorId !== authorId) {
-    throw new UnauthorizedError('You do not own this document');
+    throw new ForbiddenError('You do not own this document');
   }
 
   await db.delete(tutorialExercises).where(eq(tutorialExercises.id, id));
@@ -169,17 +169,19 @@ export async function deleteExercise(authorId: string, id: string): Promise<void
 /**
  * Get all exercises for a document. Correct answers are stripped from the response.
  * @param documentId - The document ID
+ * @param viewerProfileId - Profile reading the exercises; only the author can read a draft's
  * @returns Array of exercises with answers hidden
  * @throws NotFoundError if document not found
  */
-export async function getExercises(documentId: string): Promise<unknown[]> {
-  const docResult = await db
-    .select({ id: documents.id })
+export async function getExercises(documentId: string, viewerProfileId?: string): Promise<unknown[]> {
+  const [doc] = await db
+    .select({ id: documents.id, status: documents.status, authorId: documents.authorId })
     .from(documents)
     .where(and(eq(documents.id, documentId), isNull(documents.deletedAt)))
     .limit(1);
 
-  if (docResult.length === 0) {
+  // Drafts are visible to their author only; 404 keeps them unlisted.
+  if (!doc || (doc.status !== 'published' && doc.authorId !== viewerProfileId)) {
     throw new NotFoundError('Document not found');
   }
 

@@ -3,7 +3,7 @@ import { usernameSchema } from '../../utils/username';
 
 export { usernameSchema };
 
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters')
   .refine((pwd) => /[A-Z]/.test(pwd), {

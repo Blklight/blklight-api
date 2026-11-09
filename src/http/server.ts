@@ -1,12 +1,9 @@
-import { config } from "dotenv";
 import { buildApp } from "../app";
 import { env } from "../config/env";
 import { closeDb } from "../db";
 import { startEmailQueue } from "../features/email/email.service";
 import { startTicketCleanup } from "../features/chat/ws-tickets";
 import { features } from "../config/features";
-
-config();
 
 async function start() {
   const app = await buildApp();
@@ -29,16 +26,17 @@ async function start() {
   try {
     await app.listen({ port: env.PORT, host: "0.0.0.0" });
     app.log.info(`Server running at http://localhost:${env.PORT}`);
-    app.log.info(`API docs available at http://localhost:${env.PORT}/docs`);
+    if (env.NODE_ENV !== "production") {
+      app.log.info(`API docs available at http://localhost:${env.PORT}/docs`);
+    }
 
     stopTicketCleanup = startTicketCleanup();
 
-    app.log.info(`Environment: ${features.emailQueue}`);
+    app.log.info(`Environment: ${env.NODE_ENV}`);
     if (features.emailQueue) {
       startEmailQueue();
       app.log.info("Email queue started");
     }
-    app.log.info("features: " + JSON.stringify(features));
 
     const enabledFeatures = Object.entries(features)
       .filter(([, v]) => v)

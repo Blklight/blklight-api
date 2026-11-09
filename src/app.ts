@@ -41,6 +41,7 @@ import adminRoutes from './features/admin/admin.routes';
 
 export async function buildApp() {
   const app = Fastify({
+    trustProxy: env.TRUST_PROXY_VALUE,
     logger: {
       level: env.LOG_LEVEL,
       transport:
@@ -69,10 +70,13 @@ export async function buildApp() {
     },
   });
 
-  await app.register(scalar, {
-    routePrefix: '/docs',
-    configuration: { title: 'blklight API' },
-  });
+  // The reference UI lists every route and schema: keep it out of production.
+  if (env.NODE_ENV !== 'production') {
+    await app.register(scalar, {
+      routePrefix: '/docs',
+      configuration: { title: 'blklight API' },
+    });
+  }
 
   await app.register(cookie, { parseOptions: {} });
 
@@ -212,6 +216,18 @@ export async function buildApp() {
         data: null,
         error: { code: error.code, message: error.message },
         message: error.message,
+      });
+    }
+
+    // Postgres unique violation (drizzle wraps the driver error in `cause`): a
+    // race lost against a check-then-insert, e.g. two registrations with the
+    // same email. Same meaning as the services' own ConflictError.
+    const pgError = (knownError as Error & { cause?: { code?: string } }).cause ?? knownError;
+    if ((pgError as { code?: string }).code === '23505') {
+      return reply.code(409).send({
+        data: null,
+        error: { code: 'CONFLICT', message: 'Resource already exists' },
+        message: 'Resource already exists',
       });
     }
 
