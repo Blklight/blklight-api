@@ -71,3 +71,15 @@ export function getRefreshTtlSeconds(rememberMe: boolean | undefined): number {
   const ttl = rememberMe ? env.JWT_REFRESH_REMEMBER_TTL : env.JWT_REFRESH_EXPIRES_IN;
   return Math.floor(parseDurationMs(ttl) / 1000);
 }
+
+/**
+ * Refresh cookie options for a session that is being written.
+ * Without "remember me" the cookie carries no Max-Age, so the browser drops it
+ * when it closes; the server-side session still expires after
+ * JWT_REFRESH_EXPIRES_IN. With "remember me" it lives for JWT_REFRESH_REMEMBER_TTL.
+ * @param rememberMe - Whether the session uses the longer "remember me" TTL
+ * @returns Options for reply.setCookie
+ */
+export function buildSessionRefreshCookieOptions(rememberMe: boolean | undefined): RefreshCookieOptions {
+  return buildRefreshCookieOptions(rememberMe ? getRefreshTtlSeconds(true) : undefined);
+}

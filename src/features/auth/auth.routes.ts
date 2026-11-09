@@ -21,9 +21,8 @@ import { requireFeature } from '../../config/features';
 import { env } from '../../config/env';
 import {
   REFRESH_COOKIE_NAME,
-  buildRefreshCookieOptions,
+  buildSessionRefreshCookieOptions,
   buildRefreshCookieClearOptions,
-  getRefreshTtlSeconds,
 } from '../../config/cookies';
 
 /**
@@ -141,7 +140,7 @@ export default async function authRoutes(app: FastifyInstance) {
 
     reply
       .code(201)
-      .setCookie(REFRESH_COOKIE_NAME, refreshToken, buildRefreshCookieOptions(getRefreshTtlSeconds(false)))
+      .setCookie(REFRESH_COOKIE_NAME, refreshToken, buildSessionRefreshCookieOptions(false))
       .send({
         data: authSession,
         error: null,
@@ -237,7 +236,7 @@ export default async function authRoutes(app: FastifyInstance) {
     reply.setCookie(
       REFRESH_COOKIE_NAME,
       refreshToken,
-      buildRefreshCookieOptions(getRefreshTtlSeconds(rememberMe))
+      buildSessionRefreshCookieOptions(rememberMe)
     ).send({
       data: authSession,
       error: null,
@@ -315,7 +314,7 @@ export default async function authRoutes(app: FastifyInstance) {
       reply.setCookie(
         REFRESH_COOKIE_NAME,
         rotatedToken,
-        buildRefreshCookieOptions(getRefreshTtlSeconds(rememberMe))
+        buildSessionRefreshCookieOptions(rememberMe)
       );
     }
 

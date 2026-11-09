@@ -12,7 +12,7 @@ import { ConflictError, UnauthorizedError, NotFoundError, ValidationError } from
 import { env } from '../../config/env';
 import {
   REFRESH_COOKIE_NAME,
-  buildRefreshCookieOptions,
+  buildSessionRefreshCookieOptions,
   getRefreshTtlSeconds,
 } from '../../config/cookies';
 import { sendVerificationEmail } from '../email/email.service';
@@ -365,7 +365,7 @@ export async function createSessionWithReply(userId: string, reply: FastifyReply
   reply.setCookie(
     REFRESH_COOKIE_NAME,
     refreshToken,
-    buildRefreshCookieOptions(getRefreshTtlSeconds(rememberMe))
+    buildSessionRefreshCookieOptions(rememberMe)
   );
 }
 
