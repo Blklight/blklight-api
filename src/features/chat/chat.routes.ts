@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import {
   createServerSchema,
   createChannelSchema,
@@ -74,14 +75,7 @@ export default async function chatRoutes(app: FastifyInstance) {
       summary: 'Create a chat server (admin only)',
       tags: ['chat'],
       security: [{ bearerAuth: [] }],
-      body: {
-        type: 'object',
-        required: ['name'],
-        properties: {
-          name: { type: 'string', minLength: 1, maxLength: 100 },
-          iconUrl: { type: 'string', format: 'uri' },
-        },
-      },
+      body: toJsonSchema(createServerSchema),
       response: {
         201: {
           type: 'object',
@@ -199,13 +193,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         },
         required: ['serverId'],
       },
-      body: {
-        type: 'object',
-        required: ['profileId'],
-        properties: {
-          profileId: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(addMemberSchema),
       response: {
         201: {
           type: 'object',
@@ -281,13 +269,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         },
         required: ['serverId', 'memberId'],
       },
-      body: {
-        type: 'object',
-        required: ['status'],
-        properties: {
-          status: { type: 'string', enum: ['accepted', 'rejected'] },
-        },
-      },
+      body: toJsonSchema(decideMemberSchema),
       response: {
         200: {
           type: 'object',
@@ -360,14 +342,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         },
         required: ['serverId'],
       },
-      body: {
-        type: 'object',
-        required: ['name'],
-        properties: {
-          name: { type: 'string', minLength: 1, maxLength: 100 },
-          type: { type: 'string', enum: ['text'] },
-        },
-      },
+      body: toJsonSchema(createChannelSchema),
       response: {
         201: {
           type: 'object',
@@ -445,13 +420,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         },
         required: ['channelId'],
       },
-      body: {
-        type: 'object',
-        required: ['content'],
-        properties: {
-          content: { type: 'string', minLength: 1, maxLength: 4000 },
-        },
-      },
+      body: toJsonSchema(createMessageSchema),
       response: {
         201: {
           type: 'object',
@@ -488,13 +457,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         },
         required: ['channelId'],
       },
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-        },
-      },
+      querystring: toJsonSchema(messageQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -538,13 +501,7 @@ export default async function chatRoutes(app: FastifyInstance) {
         },
         required: ['messageId'],
       },
-      body: {
-        type: 'object',
-        required: ['content'],
-        properties: {
-          content: { type: 'string', minLength: 1, maxLength: 4000 },
-        },
-      },
+      body: toJsonSchema(updateMessageSchema),
       response: {
         200: {
           type: 'object',

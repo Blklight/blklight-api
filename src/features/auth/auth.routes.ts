@@ -1,8 +1,15 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { z } from 'zod';
+import { toJsonSchema } from '../../utils/json-schema';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/index';
-import { registerSchema, loginSchema, usernameSchema } from './auth.zod';
+import {
+  registerSchema,
+  loginSchema,
+  onboardingUsernameSchema,
+  verifyEmailSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from './auth.zod';
 import {
   registerUser,
   loginUser,
@@ -63,15 +70,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Register a new user',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['email', 'username', 'password'],
-        properties: {
-          email: { type: 'string', format: 'email' },
-          username: { type: 'string', minLength: 3, maxLength: 30 },
-          password: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(registerSchema),
       response: {
         201: {
           type: 'object',
@@ -144,15 +143,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Login with email or username',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['identifier', 'password'],
-        properties: {
-          identifier: { type: 'string', minLength: 1 },
-          password: { type: 'string' },
-          rememberMe: { type: 'boolean' },
-        },
-      },
+      body: toJsonSchema(loginSchema),
       response: {
         200: {
           type: 'object',
@@ -417,13 +408,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Set username during OAuth onboarding',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['username'],
-        properties: {
-          username: { type: 'string', minLength: 3, maxLength: 30 },
-        },
-      },
+      body: toJsonSchema(onboardingUsernameSchema),
       response: {
         200: {
           type: 'object',
@@ -436,7 +421,7 @@ export default async function authRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = z.object({ username: usernameSchema }).parse(request.body);
+    const parsed = onboardingUsernameSchema.parse(request.body);
     const userId = request.user.userId;
     await setOnboardingUsername(userId, parsed.username);
 
@@ -479,13 +464,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Verify email address',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['token'],
-        properties: {
-          token: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(verifyEmailSchema),
       response: {
         200: {
           type: 'object',
@@ -500,7 +479,7 @@ export default async function authRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     requireFeature('email');
 
-    const parsed = z.object({ token: z.string() }).parse(request.body);
+    const parsed = verifyEmailSchema.parse(request.body);
     await verifyEmail(parsed.token);
 
     reply.send({
@@ -570,13 +549,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Request password reset',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['email'],
-        properties: {
-          email: { type: 'string', format: 'email' },
-        },
-      },
+      body: toJsonSchema(forgotPasswordSchema),
       response: {
         200: {
           type: 'object',
@@ -591,7 +564,7 @@ export default async function authRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     requireFeature('email');
 
-    const parsed = z.object({ email: z.string().email() }).parse(request.body);
+    const parsed = forgotPasswordSchema.parse(request.body);
     await sendPasswordResetEmail(parsed.email);
 
     reply.send({
@@ -605,14 +578,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Reset password',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['token', 'password'],
-        properties: {
-          token: { type: 'string' },
-          password: { type: 'string', minLength: 8, maxLength: 128 },
-        },
-      },
+      body: toJsonSchema(resetPasswordSchema),
       response: {
         200: {
           type: 'object',
@@ -627,10 +593,7 @@ export default async function authRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     requireFeature('email');
 
-    const parsed = z.object({
-      token: z.string(),
-      password: z.string().min(8).max(128),
-    }).parse(request.body);
+    const parsed = resetPasswordSchema.parse(request.body);
     await resetPassword(parsed.token, parsed.password);
 
     reply.send({

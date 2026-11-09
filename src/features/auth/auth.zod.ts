@@ -28,6 +28,18 @@ export const loginSchema = z.object({
   rememberMe: z.boolean().optional().default(false),
 });
 
+export const onboardingUsernameSchema = z.object({ username: usernameSchema });
+
+export const verifyEmailSchema = z.object({ token: z.string() });
+
+export const forgotPasswordSchema = z.object({ email: z.string().email() });
+
+// The full password policy is applied by resetPassword (same rule as register).
+export const resetPasswordSchema = z.object({
+  token: z.string(),
+  password: z.string().min(8).max(128),
+});
+
 export const authSessionUserSchema = z.object({
   id: z.string(),
   email: z.string(),

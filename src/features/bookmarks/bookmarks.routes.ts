@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { perUserRateLimit } from '../../utils/rate-limit';
 import { z } from 'zod';
 import { toggleBookmark, getMyBookmarks } from './bookmarks.service';
@@ -77,13 +78,7 @@ export default async function bookmarksRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Get my bookmarks',
       tags: ['bookmarks'],
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-        },
-      },
+      querystring: toJsonSchema(bookmarkQuerySchema),
       response: {
         200: {
           type: 'object',

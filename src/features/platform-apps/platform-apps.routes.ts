@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { listApps, getUserApps, activateApps, deactivateApp, createApp, updateApp, createInvite, listInvites } from './platform-apps.service';
 import { activateAppsSchema, createAppSchema, updateAppSchema, createInviteSchema } from './platform-apps.zod';
 import { resolveProfileIdFromUserId } from '../../utils/profile';
@@ -94,18 +95,7 @@ export default async function platformAppsRoutes(app: FastifyInstance) {
       summary: 'Activate apps for current user',
       tags: ['platform-apps'],
       security: [{ bearerAuth: [] }],
-      body: {
-        type: 'object',
-        properties: {
-          apps: {
-            type: 'array',
-            items: { type: 'string' },
-            minItems: 1,
-          },
-        },
-        required: ['apps'],
-        additionalProperties: false,
-      },
+      body: toJsonSchema(activateAppsSchema),
       response: {
         200: {
           type: 'object',
@@ -183,20 +173,7 @@ export default async function platformAppsRoutes(app: FastifyInstance) {
       summary: 'Create a new platform app (admin only)',
       tags: ['platform-apps'],
       security: [{ bearerAuth: [] }],
-      body: {
-        type: 'object',
-        properties: {
-          slug: { type: 'string', minLength: 1, maxLength: 50 },
-          name: { type: 'string', minLength: 1, maxLength: 100 },
-          description: { type: 'string', maxLength: 500 },
-          accessMode: { type: 'string', enum: ['open', 'beta'] },
-          iconUrl: { type: 'string' },
-          tagline: { type: 'string', maxLength: 200 },
-          category: { type: 'string', maxLength: 100 },
-        },
-        required: ['slug', 'name'],
-        additionalProperties: false,
-      },
+      body: toJsonSchema(createAppSchema),
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const parsed = createAppSchema.parse(request.body);
@@ -225,19 +202,7 @@ export default async function platformAppsRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          name: { type: 'string', minLength: 1, maxLength: 100 },
-          description: { type: 'string', maxLength: 500 },
-          accessMode: { type: 'string', enum: ['open', 'beta'] },
-          iconUrl: { type: 'string' },
-          tagline: { type: 'string', maxLength: 200 },
-          category: { type: 'string', maxLength: 100 },
-          isActive: { type: 'boolean' },
-        },
-        additionalProperties: false,
-      },
+      body: toJsonSchema(updateAppSchema),
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
@@ -267,14 +232,7 @@ export default async function platformAppsRoutes(app: FastifyInstance) {
         },
         required: ['appId'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          profileId: { type: 'string', minLength: 1 },
-        },
-        required: ['profileId'],
-        additionalProperties: false,
-      },
+      body: toJsonSchema(createInviteSchema),
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { appId } = request.params as { appId: string };

@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { updateColorLabelsSchema } from './workspace.zod';
 import { getMyWorkspace, updateColorLabels } from './workspace.service';
 import { resolveProfileIdFromUserId } from '../../utils/profile';
@@ -66,22 +67,7 @@ export default async function workspaceRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Update color labels on my workspace',
       tags: ['workspace'],
-      body: {
-        type: 'object',
-        required: ['colorLabels'],
-        properties: {
-          colorLabels: {
-            oneOf: [
-              { type: 'null' },
-              {
-                type: 'object',
-                additionalProperties: { type: 'string', minLength: 1, maxLength: 50 },
-                maxProperties: 20,
-              },
-            ],
-          },
-        },
-      },
+      body: toJsonSchema(updateColorLabelsSchema),
       response: {
         200: {
           type: 'object',

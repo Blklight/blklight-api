@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import {
   createOrganizationSchema,
   inviteMemberSchema,
@@ -174,15 +175,7 @@ export default async function organizationRoutes(app: FastifyInstance) {
         },
         required: ['orgname'],
       },
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-          type: { type: 'string' },
-          sort: { type: 'string', enum: ['recent', 'popular'], default: 'recent' },
-        },
-      },
+      querystring: toJsonSchema(organizationFeedQuerySchema),
       response: {
         200: SUCCESS_WITH_FEED(DOCUMENT_CARD_SCHEMA),
       },
@@ -225,16 +218,7 @@ export default async function organizationRoutes(app: FastifyInstance) {
         summary: 'Create an organization',
         tags: ['organizations'],
         security: [{ bearerAuth: [] }],
-        body: {
-          type: 'object',
-          required: ['name', 'orgname'],
-          properties: {
-            name: { type: 'string', minLength: 1, maxLength: 100 },
-            orgname: { type: 'string', minLength: 3, maxLength: 30 },
-            description: { type: ['string', 'null'], maxLength: 500 },
-            isPrivate: { type: 'boolean' },
-          },
-        },
+        body: toJsonSchema(createOrganizationSchema),
         response: {
           201: SUCCESS_WITH_DATA(ORG_SCHEMA),
         },
@@ -284,13 +268,7 @@ export default async function organizationRoutes(app: FastifyInstance) {
           },
           required: ['id'],
         },
-        body: {
-          type: 'object',
-          required: ['profileId'],
-          properties: {
-            profileId: { type: 'string' },
-          },
-        },
+        body: toJsonSchema(inviteMemberSchema),
         response: {
           201: SUCCESS_WITH_DATA(MEMBER_ITEM_SCHEMA),
         },
@@ -320,13 +298,7 @@ export default async function organizationRoutes(app: FastifyInstance) {
           },
           required: ['id'],
         },
-        body: {
-          type: 'object',
-          required: ['decision'],
-          properties: {
-            decision: { type: 'string', enum: ['accepted', 'rejected'] },
-          },
-        },
+        body: toJsonSchema(decideMembershipSchema),
         response: {
           200: SUCCESS_WITH_DATA(MEMBER_ITEM_SCHEMA),
         },

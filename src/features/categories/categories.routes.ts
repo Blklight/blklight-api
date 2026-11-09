@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { z } from 'zod';
 import {
   createCategory,
@@ -155,15 +156,7 @@ export default async function categoryRoutes(app: FastifyInstance) {
       summary: 'Create a category (admin only)',
       tags: ['categories'],
       security: [{ bearerAuth: [] }],
-      body: {
-        type: 'object',
-        required: ['name'],
-        properties: {
-          name: { type: 'string', minLength: 1, maxLength: 50 },
-          description: { type: 'string', maxLength: 200 },
-          parentId: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(createCategorySchema),
       response: {
         201: {
           type: 'object',
@@ -211,14 +204,7 @@ export default async function categoryRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          name: { type: 'string', minLength: 1, maxLength: 50 },
-          description: { type: 'string', maxLength: 200 },
-          parentId: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(updateCategorySchema),
       response: {
         200: {
           type: 'object',

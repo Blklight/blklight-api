@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { getAdminOverview, listUsers, getUserDetail, updateUserRole } from './admin.service';
 import { listAllApps } from '../platform-apps/platform-apps.service';
 import { listUsersQuerySchema, updateRoleSchema } from './admin.zod';
@@ -34,17 +35,7 @@ export default async function adminRoutes(app: FastifyInstance) {
       summary: 'List users with filters (admin only)',
       tags: ['admin'],
       security: [{ bearerAuth: [] }],
-      querystring: {
-        type: 'object',
-        properties: {
-          search: { type: 'string' },
-          role: { type: 'string', enum: ['user', 'admin'] },
-          page: { type: 'integer', minimum: 1, default: 1 },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-          deleted: { type: 'string', enum: ['true', 'false'], default: 'false' },
-        },
-        additionalProperties: false,
-      },
+      querystring: toJsonSchema(listUsersQuerySchema),
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const parsed = listUsersQuerySchema.parse(request.query);
@@ -160,14 +151,7 @@ export default async function adminRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          role: { type: 'string', enum: ['user', 'admin'] },
-        },
-        required: ['role'],
-        additionalProperties: false,
-      },
+      body: toJsonSchema(updateRoleSchema),
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };

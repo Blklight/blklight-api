@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { createDocumentSchema, updateDocumentSchema, feedQuerySchema } from './documents.zod';
 import {
   createDocument,
@@ -205,20 +206,7 @@ export default async function documentRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Get public document feed',
       tags: ['documents'],
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-          type: { type: 'string' },
-          author: { type: 'string' },
-          q: { type: 'string', minLength: 1, maxLength: 100 },
-          sort: { type: 'string', enum: ['recent', 'popular'], default: 'recent' },
-          category: { type: 'string' },
-          tag: { type: 'string' },
-          organization: { type: 'string' },
-        },
-      },
+      querystring: toJsonSchema(feedQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -415,19 +403,7 @@ export default async function documentRoutes(app: FastifyInstance) {
       schema: {
         summary: 'Create a new document',
         tags: ['documents'],
-        body: {
-          type: 'object',
-          required: ['title', 'type'],
-          properties: {
-            title: { type: 'string', minLength: 1, maxLength: 200 },
-            abstract: { type: 'string', maxLength: 500 },
-            content: { type: 'object', additionalProperties: true },
-            coverImageUrl: { type: 'string', format: 'uri' },
-            type: { type: 'string' },
-            slug: { type: 'string', pattern: '^[a-z0-9-]+$' },
-            organizationId: { type: ['string', 'null'] },
-          },
-        },
+        body: toJsonSchema(createDocumentSchema),
         response: {
           201: {
             type: 'object',
@@ -478,25 +454,7 @@ export default async function documentRoutes(app: FastifyInstance) {
           },
           required: ['id'],
         },
-        body: {
-          type: 'object',
-          properties: {
-            title: { type: 'string', minLength: 1, maxLength: 200 },
-            abstract: { type: 'string', maxLength: 500 },
-            content: { type: 'object', additionalProperties: true },
-            coverImageUrl: { type: 'string', format: 'uri' },
-            type: { type: 'string' },
-            slug: { type: 'string', pattern: '^[a-z0-9-]+$' },
-            typography: { type: 'string', enum: ['sans', 'serif', 'mono'] },
-            paperStyle: { type: 'object', additionalProperties: true },
-            paperTexture: { type: 'object', additionalProperties: true },
-            coverSettings: { type: 'object', additionalProperties: true },
-            documentHeader: { type: 'object', additionalProperties: true },
-            documentFooter: { type: 'object', additionalProperties: true },
-            documentSignature: { type: 'object', additionalProperties: true },
-            organizationId: { type: ['string', 'null'] },
-          },
-        },
+        body: toJsonSchema(updateDocumentSchema),
         response: {
           200: {
             type: 'object',

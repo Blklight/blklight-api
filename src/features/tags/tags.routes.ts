@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { z } from 'zod';
 import { getPopularTags } from './tags.service';
 
@@ -11,12 +12,7 @@ export default async function tagRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Get popular tags sorted by usage',
       tags: ['tags'],
-      querystring: {
-        type: 'object',
-        properties: {
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-        },
-      },
+      querystring: toJsonSchema(popularTagsQuerySchema),
       response: {
         200: {
           type: 'object',

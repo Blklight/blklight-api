@@ -116,7 +116,7 @@ softening those `DROP CONSTRAINT` statements to `IF EXISTS`).
 
 - **Runtime**: Node.js 20+
 - **Framework**: Fastify v5 with TypeScript (CommonJS)
-- **Validation**: Zod v4
+- **Validation**: Zod v4, single source for request input. In a route, declare `body`/`querystring`/`params` as `toJsonSchema(xSchema)` (`src/utils/json-schema.ts`, used by Fastify and `/docs`) and call `xSchema.parse(request.body)` in the handler; a `ZodError` reaches `setErrorHandler`, which answers the 400 `VALIDATION_ERROR` envelope. Never hand-write the input JSON Schema or the 400 response.
 - **Database**: PostgreSQL with Drizzle ORM (postgres-js driver)
 - **Auth**: JWT with access + refresh tokens, httpOnly cookies
 - **Password Hashing**: node:crypto (pbkdf2Sync)

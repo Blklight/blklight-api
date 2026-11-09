@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { z } from 'zod';
 import { semanticSearch, getRelated, getDigest } from './memory.service';
 import { searchQuerySchema, relatedParamsSchema } from './memory.zod';
@@ -10,15 +11,7 @@ export default async function memoryRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Semantic search across indexed content',
       tags: ['memory'],
-      querystring: {
-        type: 'object',
-        properties: {
-          q: { type: 'string', minLength: 1 },
-          limit: { type: 'string' },
-        },
-        required: ['q'],
-        additionalProperties: false,
-      },
+      querystring: toJsonSchema(searchQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -49,18 +42,7 @@ export default async function memoryRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Get related items for a specific content piece',
       tags: ['memory'],
-      params: {
-        type: 'object',
-        properties: {
-          sourceType: {
-            type: 'string',
-            enum: ['note', 'document', 'journal_highlight', 'book_chapter'],
-          },
-          sourceId: { type: 'string', minLength: 1 },
-        },
-        required: ['sourceType', 'sourceId'],
-        additionalProperties: false,
-      },
+      params: toJsonSchema(relatedParamsSchema),
       querystring: {
         type: 'object',
         properties: {

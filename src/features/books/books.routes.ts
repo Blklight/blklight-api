@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import {
   createBookSchema,
   updateBookSchema,
@@ -37,17 +38,7 @@ export default async function bookRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Get public book feed (requires auth)',
       tags: ['books'],
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-          category: { type: 'string' },
-          tag: { type: 'string' },
-          q: { type: 'string', minLength: 1, maxLength: 100 },
-          sort: { type: 'string', enum: ['recent', 'popular'], default: 'recent' },
-        },
-      },
+      querystring: toJsonSchema(bookFeedQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -208,18 +199,7 @@ export default async function bookRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Create a new book',
       tags: ['books'],
-      body: {
-        type: 'object',
-        required: ['title'],
-        properties: {
-          title: { type: 'string', minLength: 1, maxLength: 200 },
-          description: { type: 'string', maxLength: 500 },
-          coverImageUrl: { type: 'string', format: 'uri' },
-          slug: { type: 'string', pattern: '^[a-z0-9-]+$' },
-          categoryId: { type: 'string' },
-          tags: { type: 'array', items: { type: 'string' }, maxItems: 5 },
-        },
-      },
+      body: toJsonSchema(createBookSchema),
       response: {
         201: {
           type: 'object',
@@ -278,17 +258,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          title: { type: 'string', minLength: 1, maxLength: 200 },
-          description: { type: 'string', maxLength: 500 },
-          coverImageUrl: { type: 'string', format: 'uri' },
-          slug: { type: 'string', pattern: '^[a-z0-9-]+$' },
-          categoryId: { type: 'string' },
-          tags: { type: 'array', items: { type: 'string' }, maxItems: 5 },
-        },
-      },
+      body: toJsonSchema(updateBookSchema),
       response: {
         200: {
           type: 'object',
@@ -448,16 +418,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        required: ['documentId'],
-        properties: {
-          documentId: { type: 'string' },
-          position: { type: 'integer', minimum: 1 },
-          introText: { type: 'string', maxLength: 1000 },
-          outroText: { type: 'string', maxLength: 1000 },
-        },
-      },
+      body: toJsonSchema(addChapterSchema),
       response: {
         201: {
           type: 'object',
@@ -518,14 +479,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         },
         required: ['id', 'chapterId'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          introText: { type: 'string', maxLength: 1000 },
-          outroText: { type: 'string', maxLength: 1000 },
-          position: { type: 'integer', minimum: 1 },
-        },
-      },
+      body: toJsonSchema(updateChapterSchema),
       response: {
         200: {
           type: 'object',
@@ -636,22 +590,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        required: ['chapters'],
-        properties: {
-          chapters: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                position: { type: 'integer', minimum: 1 },
-              },
-            },
-          },
-        },
-      },
+      body: toJsonSchema(reorderChaptersSchema),
       response: {
         200: {
           type: 'object',
@@ -711,33 +650,7 @@ export default async function bookRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        required: ['toc'],
-        properties: {
-          toc: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                chapterId: { type: 'string' },
-                title: { type: 'string' },
-                headings: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      level: { type: 'number' },
-                      text: { type: 'string' },
-                      anchor: { type: 'string' },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+      body: toJsonSchema(updateTocSchema),
       response: {
         200: {
           type: 'object',

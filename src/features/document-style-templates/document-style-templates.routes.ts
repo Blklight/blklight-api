@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { createStyleTemplateSchema } from './document-style-templates.zod';
 import { profiles } from '../profiles/profiles.schema';
 import { db } from '../../db/index';
@@ -105,19 +106,7 @@ export default async function styleTemplateRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Create a style template',
       tags: ['document-style-templates'],
-      body: {
-        type: 'object',
-        required: ['name', 'typography'],
-        properties: {
-          name: { type: 'string', minLength: 1, maxLength: 50 },
-          documentType: { type: ['string', 'null'] },
-          typography: { type: 'string', enum: ['sans', 'serif', 'mono'] },
-          paperStyle: { type: 'object', additionalProperties: true },
-          paperTexture: { type: 'object', additionalProperties: true },
-          documentHeader: { type: 'object', additionalProperties: true },
-          documentFooter: { type: 'object', additionalProperties: true },
-        },
-      },
+      body: toJsonSchema(createStyleTemplateSchema),
       response: {
         201: {
           type: 'object',

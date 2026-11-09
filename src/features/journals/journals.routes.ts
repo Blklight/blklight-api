@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import {
   CreateJournalSchema,
   UpdateJournalSchema,
@@ -26,15 +27,7 @@ export default async function journalRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Create a journal',
       tags: ['journals'],
-      body: {
-        type: 'object',
-        required: ['title'],
-        properties: {
-          title: { type: 'string', minLength: 1, maxLength: 200 },
-          description: { type: 'string', maxLength: 500 },
-          color: { type: 'string', default: 'indigo' },
-        },
-      },
+      body: toJsonSchema(CreateJournalSchema),
       response: {
         201: {
           type: 'object',
@@ -147,14 +140,7 @@ export default async function journalRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          title: { type: 'string', minLength: 1, maxLength: 200 },
-          description: { type: 'string', maxLength: 500 },
-          color: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(UpdateJournalSchema),
       response: {
         200: {
           type: 'object',
@@ -233,14 +219,7 @@ export default async function journalRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        required: ['highlightId'],
-        properties: {
-          highlightId: { type: 'string' },
-          position: { type: 'integer', minimum: 0 },
-        },
-      },
+      body: toJsonSchema(AddHighlightSchema),
       response: {
         201: {
           type: 'object',
@@ -321,23 +300,7 @@ export default async function journalRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        required: ['highlights'],
-        properties: {
-          highlights: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                position: { type: 'integer', minimum: 0 },
-              },
-              required: ['id', 'position'],
-            },
-          },
-        },
-      },
+      body: toJsonSchema(ReorderHighlightsSchema),
       response: {
         200: {
           type: 'object',

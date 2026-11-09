@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { updateProfileSchema } from './profiles.zod';
 import { getPublicProfile, getOwnProfile, updateProfile, deleteAccount } from './profiles.service';
 import { getAuthorPublicDocuments } from '../documents/documents.service';
@@ -99,14 +100,7 @@ export default async function profileRoutes(app: FastifyInstance) {
         },
         required: ['username'],
       },
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-          type: { type: 'string' },
-        },
-      },
+      querystring: toJsonSchema(authorFeedQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -196,26 +190,7 @@ export default async function profileRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Update own profile',
       tags: ['profiles'],
-      body: {
-        type: 'object',
-        properties: {
-          username: { type: 'string', minLength: 3, maxLength: 30 },
-          displayName: { type: ['string', 'null'] },
-          bio: { type: ['string', 'null'], maxLength: 300 },
-          bioPrivate: { type: ['string', 'null'], maxLength: 150 },
-          avatarUrl: { type: ['string', 'null'] },
-          isPrivate: { type: 'boolean' },
-          socialLinks: {
-            type: ['object', 'null'],
-            properties: {
-              twitter: { type: 'string' },
-              github: { type: 'string' },
-              linkedin: { type: 'string' },
-              website: { type: 'string' },
-            },
-          },
-        },
-      },
+      body: toJsonSchema(updateProfileSchema),
       response: {
         200: {
           type: 'object',

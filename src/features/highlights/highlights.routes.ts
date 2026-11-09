@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import {
   createHighlightSchema,
   updateHighlightSchema,
@@ -99,18 +100,7 @@ export default async function highlightRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Update my highlight palette',
       tags: ['highlights'],
-      body: {
-        type: 'object',
-        required: ['colors'],
-        properties: {
-          colors: {
-            type: 'array',
-            items: { type: 'string', pattern: '^#[0-9A-Fa-f]{6}$' },
-            minItems: 5,
-            maxItems: 5,
-          },
-        },
-      },
+      body: toJsonSchema(updatePaletteSchema),
       response: {
         200: {
           type: 'object',
@@ -147,13 +137,7 @@ export default async function highlightRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Get my highlights grouped by document',
       tags: ['highlights'],
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-        },
-      },
+      querystring: toJsonSchema(highlightQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -206,27 +190,7 @@ export default async function highlightRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          selection: {
-            type: 'object',
-            properties: {
-              text: { type: 'string', minLength: 1, maxLength: 2000 },
-              color: { type: 'string', pattern: '^#[0-9A-Fa-f]{6}$' },
-              position: {
-                type: 'object',
-                properties: {
-                  nodeIndex: { type: 'number' },
-                  offsetStart: { type: 'number' },
-                  offsetEnd: { type: 'number' },
-                },
-              },
-            },
-          },
-          annotation: { type: 'object', nullable: true },
-        },
-      },
+      body: toJsonSchema(updateHighlightSchema),
       response: {
         200: {
           type: 'object',

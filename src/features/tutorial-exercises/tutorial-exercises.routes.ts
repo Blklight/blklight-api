@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { perUserRateLimit } from '../../utils/rate-limit';
 import { createExerciseSchema, updateExerciseSchema, submitAnswerSchema } from './tutorial-exercises.zod';
 import {
@@ -81,43 +82,7 @@ export default async function tutorialExerciseRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        oneOf: [
-          {
-            type: 'object',
-            properties: {
-              type: { type: 'string', const: 'code' },
-              data: {
-                type: 'object',
-                properties: {
-                  prompt: { type: 'string', minLength: 1 },
-                  language: { type: 'string', minLength: 1 },
-                  initialCode: { type: 'string' },
-                  expectedOutput: { type: 'string', minLength: 1 },
-                },
-                required: ['prompt', 'language', 'initialCode', 'expectedOutput'],
-              },
-            },
-            required: ['type', 'data'],
-          },
-          {
-            type: 'object',
-            properties: {
-              type: { type: 'string', const: 'quiz' },
-              data: {
-                type: 'object',
-                properties: {
-                  question: { type: 'string', minLength: 1 },
-                  options: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 6 },
-                  correctIndex: { type: 'number', minimum: 0 },
-                },
-                required: ['question', 'options', 'correctIndex'],
-              },
-            },
-            required: ['type', 'data'],
-          },
-        ],
-      },
+      body: toJsonSchema(createExerciseSchema),
       response: {
         201: {
           type: 'object',
@@ -156,41 +121,7 @@ export default async function tutorialExerciseRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        oneOf: [
-          {
-            type: 'object',
-            properties: {
-              type: { type: 'string', const: 'code' },
-              data: {
-                type: 'object',
-                properties: {
-                  prompt: { type: 'string', minLength: 1 },
-                  language: { type: 'string', minLength: 1 },
-                  initialCode: { type: 'string' },
-                  expectedOutput: { type: 'string', minLength: 1 },
-                },
-              },
-            },
-            required: ['type', 'data'],
-          },
-          {
-            type: 'object',
-            properties: {
-              type: { type: 'string', const: 'quiz' },
-              data: {
-                type: 'object',
-                properties: {
-                  question: { type: 'string', minLength: 1 },
-                  options: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 6 },
-                  correctIndex: { type: 'number', minimum: 0 },
-                },
-              },
-            },
-            required: ['type', 'data'],
-          },
-        ],
-      },
+      body: toJsonSchema(updateExerciseSchema),
       response: {
         200: {
           type: 'object',
@@ -267,26 +198,7 @@ export default async function tutorialExerciseRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        oneOf: [
-          {
-            type: 'object',
-            properties: {
-              type: { type: 'string', const: 'code' },
-              code: { type: 'string', minLength: 1 },
-            },
-            required: ['type', 'code'],
-          },
-          {
-            type: 'object',
-            properties: {
-              type: { type: 'string', const: 'quiz' },
-              answerIndex: { type: 'number', minimum: 0 },
-            },
-            required: ['type', 'answerIndex'],
-          },
-        ],
-      },
+      body: toJsonSchema(submitAnswerSchema),
       response: {
         200: {
           type: 'object',
