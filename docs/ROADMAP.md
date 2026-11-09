@@ -153,10 +153,10 @@ Goal: Engagement, personal space, and learning content.
 |--------|----------|
 | DELETE | /api/v1/profiles/me |
 | DELETE | /api/v1/auth/account/unlink/:provider |
-| GET | /api/v1/auth/github/link |
-| GET | /api/v1/auth/github/link/callback |
-| GET | /api/v1/auth/google/link |
-| GET | /api/v1/auth/google/link/callback |
+| POST | /api/v1/auth/github/link |
+| GET | /api/v1/auth/github/link/start |
+| POST | /api/v1/auth/google/link |
+| GET | /api/v1/auth/google/link/start |
 
 ### Tests to pass before Beta release
 

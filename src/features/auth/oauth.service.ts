@@ -20,7 +20,7 @@ export interface OAuthLoginResult {
 /**
  * Fetch user data from GitHub API.
  * @param accessToken - GitHub access token
- * @returns GitHub user data
+ * @returns GitHub user data; email is empty unless it is the verified primary
  */
 export async function fetchGitHubUser(accessToken: string): Promise<OAuthUser> {
   const response = await fetch('https://api.github.com/user', {
@@ -36,24 +36,22 @@ export async function fetchGitHubUser(accessToken: string): Promise<OAuthUser> {
 
   const data = await response.json() as {
     id: number;
-    email: string | null;
     name: string | null;
     login: string;
   };
 
-  let email: string | null | undefined = data.email;
-  if (!email) {
-    const emailsResponse = await fetch('https://api.github.com/user/emails', {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: 'application/vnd.github.v3+json',
-      },
-    });
-    if (emailsResponse.ok) {
-      const emails = await emailsResponse.json() as Array<{ primary: boolean; email: string }>;
-      const primaryEmail = emails.find((e) => e.primary);
-      email = primaryEmail?.email;
-    }
+  // Only a verified primary address: an unverified one could belong to
+  // someone else, and handleOAuthLogin creates accounts by email.
+  let email: string | undefined;
+  const emailsResponse = await fetch('https://api.github.com/user/emails', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/vnd.github.v3+json',
+    },
+  });
+  if (emailsResponse.ok) {
+    const emails = await emailsResponse.json() as Array<{ primary: boolean; verified: boolean; email: string }>;
+    email = emails.find((e) => e.primary && e.verified)?.email;
   }
 
   return {
@@ -67,7 +65,7 @@ export async function fetchGitHubUser(accessToken: string): Promise<OAuthUser> {
 /**
  * Fetch user data from Google API.
  * @param accessToken - Google access token
- * @returns Google user data
+ * @returns Google user data; email is empty unless Google marks it verified
  */
 export async function fetchGoogleUser(accessToken: string): Promise<OAuthUser> {
   const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
@@ -83,12 +81,13 @@ export async function fetchGoogleUser(accessToken: string): Promise<OAuthUser> {
   const data = await response.json() as {
     id: string;
     email: string | null;
+    verified_email?: boolean;
     name: string | null;
   };
 
   return {
     id: data.id,
-    email: data.email || '',
+    email: data.verified_email ? data.email || '' : '',
     name: data.name || '',
   };
 }

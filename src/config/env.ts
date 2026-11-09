@@ -184,6 +184,7 @@ const envSchema = z
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
         "OAUTH_REDIRECT_BASE_URL",
+        "FRONTEND_URL",
       ];
       for (const field of oauthFields) {
         if (!data[field as keyof typeof data]) {

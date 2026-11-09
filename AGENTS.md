@@ -1154,14 +1154,10 @@ Apps available at launch (seeded in `db/seed.ts`):
 
 | Method | Endpoint                              | Auth | Description                               |
 | ------ | ------------------------------------- | ---- | ----------------------------------------- |
-| GET    | /api/v1/auth/github                   | No   | Redirect to GitHub OAuth                  |
-| GET    | /api/v1/auth/github/callback          | No   | GitHub OAuth callback                     |
-| GET    | /api/v1/auth/github/link              | Yes  | Start GitHub account linking              |
-| GET    | /api/v1/auth/github/link/callback     | Yes  | GitHub linking callback                   |
-| GET    | /api/v1/auth/google                   | No   | Redirect to Google OAuth                  |
-| GET    | /api/v1/auth/google/callback          | No   | Google OAuth callback                     |
-| GET    | /api/v1/auth/google/link              | Yes  | Start Google account linking              |
-| GET    | /api/v1/auth/google/link/callback     | Yes  | Google linking callback                   |
+| GET    | /api/v1/auth/:provider                | No   | Redirect to GitHub/Google OAuth (state + PKCE cookies) |
+| POST   | /api/v1/auth/:provider/link           | Yes  | Create a single-use link intent (httpOnly cookie)      |
+| GET    | /api/v1/auth/:provider/link/start     | No   | Redirect to the provider when the intent cookie is live |
+| GET    | /api/v1/auth/:provider/callback       | No   | Callback for login and linking (link cookie decides)   |
 | DELETE | /api/v1/auth/account/unlink/:provider | Yes  | Unlink OAuth provider                     |
 
 ## Profile Routes

@@ -14,6 +14,7 @@ import swagger from '@fastify/swagger';
 import scalar from '@scalar/fastify-api-reference';
 import oauth2 from '@fastify/oauth2';
 import { env } from './config/env';
+import { features } from './config/features';
 import { AppError, ValidationError, RateLimitError } from './utils/errors';
 import authRoutes from './features/auth/auth.routes';
 import profileRoutes from './features/profiles/profiles.routes';
@@ -109,31 +110,41 @@ export async function buildApp() {
     options: { maxPayload: 16 * 1024 },
   });
 
-  await app.register(oauth2, {
-    name: 'githubOAuth2',
-    scope: ['user:email'],
-    credentials: {
-      client: {
-        id: env.GITHUB_CLIENT_ID,
-        secret: env.GITHUB_CLIENT_SECRET,
-      },
-      auth: oauth2.GITHUB_CONFIGURATION,
-    },
-    callbackUri: `${env.OAUTH_REDIRECT_BASE_URL}/api/v1/auth/github/callback`,
-  });
+  // Only with OAuth on: the env schema then guarantees the credentials. The
+  // plugin keeps the CSRF state and the PKCE verifier in httpOnly cookies.
+  if (features.oauth) {
+    const oauthCookie = { secure: env.NODE_ENV === 'production', sameSite: 'lax' as const };
 
-  await app.register(oauth2, {
-    name: 'googleOAuth2',
-    scope: ['profile', 'email'],
-    credentials: {
-      client: {
-        id: env.GOOGLE_CLIENT_ID,
-        secret: env.GOOGLE_CLIENT_SECRET,
+    await app.register(oauth2, {
+      name: 'githubOAuth2',
+      scope: ['user:email'],
+      credentials: {
+        client: {
+          id: env.GITHUB_CLIENT_ID!,
+          secret: env.GITHUB_CLIENT_SECRET!,
+        },
+        auth: oauth2.GITHUB_CONFIGURATION,
       },
-      auth: oauth2.GOOGLE_CONFIGURATION,
-    },
-    callbackUri: `${env.OAUTH_REDIRECT_BASE_URL}/api/v1/auth/google/callback`,
-  });
+      callbackUri: `${env.OAUTH_REDIRECT_BASE_URL}/api/v1/auth/github/callback`,
+      pkce: 'S256',
+      cookie: oauthCookie,
+    });
+
+    await app.register(oauth2, {
+      name: 'googleOAuth2',
+      scope: ['profile', 'email'],
+      credentials: {
+        client: {
+          id: env.GOOGLE_CLIENT_ID!,
+          secret: env.GOOGLE_CLIENT_SECRET!,
+        },
+        auth: oauth2.GOOGLE_CONFIGURATION,
+      },
+      callbackUri: `${env.OAUTH_REDIRECT_BASE_URL}/api/v1/auth/google/callback`,
+      pkce: 'S256',
+      cookie: oauthCookie,
+    });
+  }
 
   app.decorate('authenticate', async function (request: FastifyRequest, reply: FastifyReply) {
     try {
