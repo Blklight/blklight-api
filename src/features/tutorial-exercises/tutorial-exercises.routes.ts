@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { perUserRateLimit } from '../../utils/rate-limit';
 import { createExerciseSchema, updateExerciseSchema, submitAnswerSchema } from './tutorial-exercises.zod';
 import {
   createExercise,
@@ -282,6 +283,7 @@ export default async function tutorialExerciseRoutes(app: FastifyInstance) {
   });
 
   app.post('/exercises/:id/submit', {
+    config: { rateLimit: perUserRateLimit(20) },
     schema: {
       summary: 'Submit an answer to an exercise',
       tags: ['tutorial-exercises'],

@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { perUserRateLimit } from '../../utils/rate-limit';
 import { z } from 'zod';
 import { toggleBookmark, getMyBookmarks } from './bookmarks.service';
 import { resolveProfileIdFromUserId } from '../../utils/profile';
@@ -29,6 +30,7 @@ const bookmarkQuerySchema = z.object({
 
 export default async function bookmarksRoutes(app: FastifyInstance) {
   app.post('/documents/:id/bookmark', {
+    config: { rateLimit: perUserRateLimit(30) },
     preHandler: [(request: FastifyRequest, reply: FastifyReply) => app.authenticate(request, reply)],
     schema: {
       summary: 'Toggle bookmark on a document',

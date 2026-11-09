@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { perUserRateLimit } from '../../utils/rate-limit';
 import {
   followProfile,
   unfollowProfile,
@@ -99,6 +100,7 @@ export default async function followRoutes(app: FastifyInstance) {
   });
 
   app.post('/profiles/:username/follow', {
+    config: { rateLimit: perUserRateLimit(10) },
     preHandler: [(request: FastifyRequest, reply: FastifyReply) => app.authenticate(request, reply)],
     schema: {
       summary: 'Follow a profile',
@@ -143,6 +145,7 @@ export default async function followRoutes(app: FastifyInstance) {
   });
 
   app.delete('/profiles/:username/follow', {
+    config: { rateLimit: perUserRateLimit(10) },
     preHandler: [(request: FastifyRequest, reply: FastifyReply) => app.authenticate(request, reply)],
     schema: {
       summary: 'Unfollow a profile',
