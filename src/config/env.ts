@@ -126,9 +126,8 @@ const envSchema = z
     FEATURE_EMAIL: booleanFromEnvDefault(false),
     FEATURE_OAUTH: booleanFromEnvDefault(false),
     FEATURE_EMAIL_QUEUE: booleanFromEnvDefault(false),
-    // node:vm is not an isolation boundary: submitted code can reach the host
-    // process. Keep off until execution moves to a real sandbox.
-    FEATURE_CODE_SANDBOX: booleanFromEnvDefault(false),
+    // Submitted code runs in QuickJS (WASM) inside a worker thread; see utils/sandbox.ts.
+    FEATURE_CODE_SANDBOX: booleanFromEnvDefault(true),
     FEATURE_MEMORY: booleanFromEnvDefault(true),
     GEMINI_API_KEY: z.string().optional(),
     ADMIN_EMAIL: z.string().email().optional(),
