@@ -13,44 +13,44 @@ import {
 
 describe('crypto', () => {
   describe('hashPassword', () => {
-    it('hashPassword returns hash and salt as non-empty strings', () => {
-      const { hash, salt } = hashPassword('testpassword');
+    it('hashPassword returns hash and salt as non-empty strings', async () => {
+      const { hash, salt } = await hashPassword('testpassword');
       expect(hash).toBeDefined();
       expect(hash.length).toBeGreaterThan(0);
       expect(salt).toBeDefined();
       expect(salt.length).toBeGreaterThan(0);
     });
 
-    it('hashPassword same password + same salt produces same hash', () => {
-      const { hash: hash1 } = hashPassword('testpassword');
-      const { hash: hash2 } = hashPassword('testpassword');
+    it('hashPassword same password + same salt produces same hash', async () => {
+      const { hash: hash1 } = await hashPassword('testpassword');
+      const { hash: hash2 } = await hashPassword('testpassword');
       expect(hash1).not.toBe(hash2);
     });
 
-    it('hashPassword different passwords produce different hashes', () => {
-      const { hash: hash1 } = hashPassword('password1');
-      const { hash: hash2 } = hashPassword('password2');
+    it('hashPassword different passwords produce different hashes', async () => {
+      const { hash: hash1 } = await hashPassword('password1');
+      const { hash: hash2 } = await hashPassword('password2');
       expect(hash1).not.toBe(hash2);
     });
   });
 
   describe('verifyPassword', () => {
-    it('verifyPassword correct password returns true', () => {
-      const { hash, salt } = hashPassword('correctpassword');
-      const result = verifyPassword('correctpassword', hash, salt);
+    it('verifyPassword correct password returns true', async () => {
+      const { hash, salt } = await hashPassword('correctpassword');
+      const result = await verifyPassword('correctpassword', hash, salt);
       expect(result).toBe(true);
     });
 
-    it('verifyPassword wrong password returns false', () => {
-      const { hash, salt } = hashPassword('correctpassword');
-      const result = verifyPassword('wrongpassword', hash, salt);
+    it('verifyPassword wrong password returns false', async () => {
+      const { hash, salt } = await hashPassword('correctpassword');
+      const result = await verifyPassword('wrongpassword', hash, salt);
       expect(result).toBe(false);
     });
 
-    it('verifyPassword tampered hash returns false', () => {
-      const { hash, salt } = hashPassword('mypassword');
+    it('verifyPassword tampered hash returns false', async () => {
+      const { hash, salt } = await hashPassword('mypassword');
       const tamperedHash = hash.slice(0, -2) + 'xx';
-      const result = verifyPassword('mypassword', tamperedHash, salt);
+      const result = await verifyPassword('mypassword', tamperedHash, salt);
       expect(result).toBe(false);
     });
   });

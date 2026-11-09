@@ -7,7 +7,7 @@ import { signatures } from '../signatures/signatures.schema';
 import { workspaces } from '../workspace/workspace.schema';
 import { canvas } from '../canvas/canvas.schema';
 import { getUserApps } from '../platform-apps/platform-apps.service';
-import { hashPassword, verifyPassword, generateSecret, generateUserHash, encryptSecret, hashRefreshToken } from '../../utils/crypto';
+import { hashPassword, verifyPassword, verifyPasswordDummy, generateSecret, generateUserHash, encryptSecret, hashRefreshToken } from '../../utils/crypto';
 import { ConflictError, UnauthorizedError, NotFoundError, ValidationError } from '../../utils/errors';
 import { env } from '../../config/env';
 import {
@@ -407,7 +407,7 @@ export async function createUser(
     throw new ConflictError('Username already taken');
   }
 
-  const { hash, salt } = hashPassword(password);
+  const { hash, salt } = await hashPassword(password);
   const userId = createId();
   const now = new Date();
 
@@ -512,21 +512,14 @@ export async function loginUser(
     .where(condition)
     .limit(1);
 
-  if (userRows.length === 0) {
+  const user = userRows[0];
+
+  if (!user || user.deletedAt !== null || !user.passwordHash || !user.salt) {
+    await verifyPasswordDummy(password);
     throw new UnauthorizedError('Invalid email or password');
   }
 
-  const user = userRows[0]!;
-
-  if (user.deletedAt !== null) {
-    throw new UnauthorizedError('Invalid email or password');
-  }
-
-  if (!user.passwordHash || !user.salt) {
-    throw new UnauthorizedError('Invalid email or password');
-  }
-
-  const isValid = verifyPassword(password, user.passwordHash, user.salt);
+  const isValid = await verifyPassword(password, user.passwordHash, user.salt);
   if (!isValid) {
     throw new UnauthorizedError('Invalid email or password');
   }

@@ -220,7 +220,7 @@ async function resetPassword(token: string, newPassword: string): Promise<void> 
     throw new ValidationError('Password must be 8-128 characters');
   }
 
-  const { hash, salt } = hashPassword(newPassword);
+  const { hash, salt } = await hashPassword(newPassword);
 
   await db.transaction(async (tx) => {
     await tx
