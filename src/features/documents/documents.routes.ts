@@ -56,13 +56,14 @@ const STYLE_SCHEMA = {
   },
 };
 
+// additionalProperties: false also strips userHash from documents signed
+// before it was dropped from Authorship (it is still stored in their jsonb).
 const AUTHORSHIP_SCHEMA = {
   type: ['object', 'null'],
-  additionalProperties: true,
+  additionalProperties: false,
   properties: {
     authorName: { type: 'string' },
     username: { type: 'string' },
-    userHash: { type: 'string' },
     documentHash: { type: 'string' },
     publicIdentifier: { type: 'string' },
     hmac: { type: 'string' },

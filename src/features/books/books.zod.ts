@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { httpUrlSchema } from '../../utils/url';
 
 export const headingSchema = z.object({
   level: z.number().int().min(1).max(6),
@@ -15,7 +16,7 @@ export const tocItemSchema = z.object({
 export const createBookSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(500).nullable().optional(),
-  coverImageUrl: z.string().url('Invalid URL format').nullable().optional(),
+  coverImageUrl: httpUrlSchema().nullable().optional(),
   slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens').max(100).optional(),
   categoryId: z.string().cuid2().nullable().optional(),
   tags: z.array(z.string().max(30)).max(5).optional(),
@@ -24,7 +25,7 @@ export const createBookSchema = z.object({
 export const updateBookSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(500).nullable().optional(),
-  coverImageUrl: z.string().url('Invalid URL format').nullable().optional(),
+  coverImageUrl: httpUrlSchema().nullable().optional(),
   slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens').max(100).optional(),
   categoryId: z.string().cuid2().nullable().optional(),
   tags: z.array(z.string().max(30)).max(5).optional(),

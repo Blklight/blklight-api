@@ -34,10 +34,20 @@ import type {
   UpdateTocInput,
 } from './books.zod';
 
+/**
+ * Books signed before userHash left Authorship still store it in jsonb; drop
+ * it on read so it never reaches a reader.
+ * @param authorship - Stored authorship jsonb
+ * @returns Authorship without userHash
+ */
+function stripLegacyUserHash(authorship: unknown): Authorship {
+  const { userHash: _userHash, ...rest } = authorship as Authorship & { userHash?: string };
+  return rest;
+}
+
 export interface Authorship {
   authorName: string;
   username: string;
-  userHash: string;
   documentHash: string;
   publicIdentifier: string;
   hmac: string;
@@ -369,7 +379,6 @@ export async function publishBook(authorId: string, id: string): Promise<Book> {
   const authorship: Authorship = {
     authorName: profile.displayName ?? profile.username,
     username: profile.username,
-    userHash: signed.userHash,
     documentHash: signed.documentHash,
     publicIdentifier: signed.publicIdentifier,
     hmac: signed.signature,
@@ -1083,7 +1092,7 @@ export async function getPublicBook(username: string, slug: string, profileId: s
     category: cat ?? null,
     tags,
     toc: book.toc,
-    authorship: book.authorship as Authorship,
+    authorship: stripLegacyUserHash(book.authorship),
     chapters: chapters.map((c) => ({
       id: c.id,
       position: c.position,
