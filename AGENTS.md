@@ -4,7 +4,7 @@ REST API built with Fastify, auth-first, growing into full CRUD capabilities.
 
 ## Current Status
 
-Baseline atual: 178 testes / 0 failed, `tsc` sem erros. Último trabalho: itens
+Baseline atual: 196 testes / 0 failed, `tsc` sem erros; suíte de autorização entre contas em `tests/integration/authorization.test.ts`. Último trabalho: itens
 P e M de `docs/QUALITY_REPORT.md` (sandbox em QuickJS num worker, OAuth com
 state/PKCE e vínculo por intenção de uso único, dependências sem
 vulnerabilidades altas, `TRUST_PROXY`, rate limits por usuário, migrations 0024
