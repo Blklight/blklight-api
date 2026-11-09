@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import {
   CreateJournalSchema,
   UpdateJournalSchema,
@@ -26,15 +27,7 @@ export default async function journalRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Create a journal',
       tags: ['journals'],
-      body: {
-        type: 'object',
-        required: ['title'],
-        properties: {
-          title: { type: 'string', minLength: 1, maxLength: 200 },
-          description: { type: 'string', maxLength: 500 },
-          color: { type: 'string', default: 'indigo' },
-        },
-      },
+      body: toJsonSchema(CreateJournalSchema),
       response: {
         201: {
           type: 'object',
@@ -56,23 +49,8 @@ export default async function journalRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { userId } = request.user;
-    const parsed = CreateJournalSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const journal = await createJournal(userId, parsed.data);
+    const parsed = CreateJournalSchema.parse(request.body);
+    const journal = await createJournal(userId, parsed);
 
     reply.code(201).send({
       data: journal,
@@ -162,14 +140,7 @@ export default async function journalRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          title: { type: 'string', minLength: 1, maxLength: 200 },
-          description: { type: 'string', maxLength: 500 },
-          color: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(UpdateJournalSchema),
       response: {
         200: {
           type: 'object',
@@ -192,23 +163,8 @@ export default async function journalRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     const { userId } = request.user;
     const { id } = request.params;
-    const parsed = UpdateJournalSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const journal = await updateJournal(userId, id, parsed.data);
+    const parsed = UpdateJournalSchema.parse(request.body);
+    const journal = await updateJournal(userId, id, parsed);
 
     reply.send({
       data: journal,
@@ -263,14 +219,7 @@ export default async function journalRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        required: ['highlightId'],
-        properties: {
-          highlightId: { type: 'string' },
-          position: { type: 'integer', minimum: 0 },
-        },
-      },
+      body: toJsonSchema(AddHighlightSchema),
       response: {
         201: {
           type: 'object',
@@ -293,24 +242,9 @@ export default async function journalRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     const { userId } = request.user;
     const { id } = request.params;
-    const parsed = AddHighlightSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = AddHighlightSchema.parse(request.body);
     const profileId = await resolveProfileIdFromUserId(userId);
-    const journalHighlight = await addHighlightToJournal(profileId, id, parsed.data);
+    const journalHighlight = await addHighlightToJournal(profileId, id, parsed);
 
     reply.code(201).send({
       data: journalHighlight,
@@ -366,23 +300,7 @@ export default async function journalRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        required: ['highlights'],
-        properties: {
-          highlights: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                position: { type: 'integer', minimum: 0 },
-              },
-              required: ['id', 'position'],
-            },
-          },
-        },
-      },
+      body: toJsonSchema(ReorderHighlightsSchema),
       response: {
         200: {
           type: 'object',
@@ -405,23 +323,8 @@ export default async function journalRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     const { userId } = request.user;
     const { id } = request.params;
-    const parsed = ReorderHighlightsSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    await reorderHighlights(userId, id, parsed.data);
+    const parsed = ReorderHighlightsSchema.parse(request.body);
+    await reorderHighlights(userId, id, parsed);
 
     reply.send({
       data: null,

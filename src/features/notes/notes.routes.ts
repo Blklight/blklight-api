@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { createNoteSchema, updateNoteSchema, noteQuerySchema } from './notes.zod';
 import {
   createNote,
@@ -33,17 +34,7 @@ export default async function noteRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Create a note',
       tags: ['notes'],
-      body: {
-        type: 'object',
-        required: ['content'],
-        properties: {
-          title: { type: 'string', maxLength: 200 },
-          content: { type: 'string', minLength: 1, maxLength: 10000 },
-          type: { type: 'string' },
-          language: { type: 'string', maxLength: 50 },
-          color: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(createNoteSchema),
       response: {
         201: {
           type: 'object',
@@ -65,23 +56,8 @@ export default async function noteRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { userId } = request.user;
-    const parsed = createNoteSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const note = await createNote(userId, parsed.data);
+    const parsed = createNoteSchema.parse(request.body);
+    const note = await createNote(userId, parsed);
 
     reply.code(201).send({
       data: note,
@@ -94,15 +70,7 @@ export default async function noteRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Get my notes',
       tags: ['notes'],
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-          type: { type: 'string' },
-          color: { type: 'string' },
-        },
-      },
+      querystring: toJsonSchema(noteQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -133,23 +101,8 @@ export default async function noteRoutes(app: FastifyInstance) {
     Querystring: { cursor?: string; limit?: number; type?: string; color?: string }
   }>, reply: FastifyReply) => {
     const { userId } = request.user;
-    const parsed = noteQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const result = await getMyNotes(userId, parsed.data);
+    const parsed = noteQuerySchema.parse(request.query);
+    const result = await getMyNotes(userId, parsed);
 
     reply.send({
       data: result,
@@ -212,16 +165,7 @@ export default async function noteRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          title: { type: 'string', maxLength: 200 },
-          content: { type: 'string', minLength: 1, maxLength: 10000 },
-          type: { type: 'string' },
-          language: { type: 'string', maxLength: 50 },
-          color: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(updateNoteSchema),
       response: {
         200: {
           type: 'object',
@@ -244,23 +188,8 @@ export default async function noteRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     const { userId } = request.user;
     const { id } = request.params;
-    const parsed = updateNoteSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const note = await updateNote(userId, id, parsed.data);
+    const parsed = updateNoteSchema.parse(request.body);
+    const note = await updateNote(userId, id, parsed);
 
     reply.send({
       data: note,

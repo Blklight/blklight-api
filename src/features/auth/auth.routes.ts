@@ -1,8 +1,15 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { z } from 'zod';
+import { toJsonSchema } from '../../utils/json-schema';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/index';
-import { registerSchema, loginSchema, usernameSchema } from './auth.zod';
+import {
+  registerSchema,
+  loginSchema,
+  onboardingUsernameSchema,
+  verifyEmailSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from './auth.zod';
 import {
   registerUser,
   loginUser,
@@ -63,15 +70,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Register a new user',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['email', 'username', 'password'],
-        properties: {
-          email: { type: 'string', format: 'email' },
-          username: { type: 'string', minLength: 3, maxLength: 30 },
-          password: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(registerSchema),
       response: {
         201: {
           type: 'object',
@@ -113,22 +112,8 @@ export default async function authRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = registerSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const { email, username, password } = parsed.data;
+    const parsed = registerSchema.parse(request.body);
+    const { email, username, password } = parsed;
     const { user, refreshToken } = await registerUser(email, username, password);
 
     const accessToken = app.jwt.sign(
@@ -158,15 +143,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Login with email or username',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['identifier', 'password'],
-        properties: {
-          identifier: { type: 'string', minLength: 1 },
-          password: { type: 'string' },
-          rememberMe: { type: 'boolean' },
-        },
-      },
+      body: toJsonSchema(loginSchema),
       response: {
         200: {
           type: 'object',
@@ -208,22 +185,8 @@ export default async function authRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = loginSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const { identifier, password, rememberMe } = parsed.data;
+    const parsed = loginSchema.parse(request.body);
+    const { identifier, password, rememberMe } = parsed;
     const { userId, refreshToken, role, email } = await loginUser(identifier, password, rememberMe);
 
     const accessToken = app.jwt.sign(
@@ -445,13 +408,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Set username during OAuth onboarding',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['username'],
-        properties: {
-          username: { type: 'string', minLength: 3, maxLength: 30 },
-        },
-      },
+      body: toJsonSchema(onboardingUsernameSchema),
       response: {
         200: {
           type: 'object',
@@ -464,24 +421,9 @@ export default async function authRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = z.object({ username: usernameSchema }).safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = onboardingUsernameSchema.parse(request.body);
     const userId = request.user.userId;
-    await setOnboardingUsername(userId, parsed.data.username);
+    await setOnboardingUsername(userId, parsed.username);
 
     reply.send({
       data: null,
@@ -522,13 +464,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Verify email address',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['token'],
-        properties: {
-          token: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(verifyEmailSchema),
       response: {
         200: {
           type: 'object',
@@ -543,22 +479,8 @@ export default async function authRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     requireFeature('email');
 
-    const parsed = z.object({ token: z.string() }).safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    await verifyEmail(parsed.data.token);
+    const parsed = verifyEmailSchema.parse(request.body);
+    await verifyEmail(parsed.token);
 
     reply.send({
       data: null,
@@ -627,13 +549,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Request password reset',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['email'],
-        properties: {
-          email: { type: 'string', format: 'email' },
-        },
-      },
+      body: toJsonSchema(forgotPasswordSchema),
       response: {
         200: {
           type: 'object',
@@ -648,22 +564,8 @@ export default async function authRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     requireFeature('email');
 
-    const parsed = z.object({ email: z.string().email() }).safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    await sendPasswordResetEmail(parsed.data.email);
+    const parsed = forgotPasswordSchema.parse(request.body);
+    await sendPasswordResetEmail(parsed.email);
 
     reply.send({
       data: null,
@@ -676,14 +578,7 @@ export default async function authRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Reset password',
       tags: ['auth'],
-      body: {
-        type: 'object',
-        required: ['token', 'password'],
-        properties: {
-          token: { type: 'string' },
-          password: { type: 'string', minLength: 8, maxLength: 128 },
-        },
-      },
+      body: toJsonSchema(resetPasswordSchema),
       response: {
         200: {
           type: 'object',
@@ -698,26 +593,8 @@ export default async function authRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     requireFeature('email');
 
-    const parsed = z.object({
-      token: z.string(),
-      password: z.string().min(8).max(128),
-    }).safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    await resetPassword(parsed.data.token, parsed.data.password);
+    const parsed = resetPasswordSchema.parse(request.body);
+    await resetPassword(parsed.token, parsed.password);
 
     reply.send({
       data: null,

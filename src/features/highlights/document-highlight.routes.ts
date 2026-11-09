@@ -66,28 +66,13 @@ export default async function documentHighlightRoutes(app: FastifyInstance) {
     const { userId } = request.user;
     const { id } = request.params;
 
-    const parsed = createHighlightSchema.safeParse({
+    const parsed = createHighlightSchema.parse({
       documentId: id,
       ...(request.body as object),
     });
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
     const profileId = await resolveProfileIdFromUserId(userId);
 
-    const highlight = await createHighlight(profileId, parsed.data);
+    const highlight = await createHighlight(profileId, parsed);
 
     reply.code(201).send({
       data: highlight,

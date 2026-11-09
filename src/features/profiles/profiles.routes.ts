@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { updateProfileSchema } from './profiles.zod';
 import { getPublicProfile, getOwnProfile, updateProfile, deleteAccount } from './profiles.service';
 import { getAuthorPublicDocuments } from '../documents/documents.service';
@@ -99,14 +100,7 @@ export default async function profileRoutes(app: FastifyInstance) {
         },
         required: ['username'],
       },
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-          type: { type: 'string' },
-        },
-      },
+      querystring: toJsonSchema(authorFeedQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -127,22 +121,7 @@ export default async function profileRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest<{ Params: { username: string }; Querystring: { cursor?: string; limit?: number; type?: string } }>, reply: FastifyReply) => {
     const { username } = request.params;
-    const parsed = authorFeedQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = authorFeedQuerySchema.parse(request.query);
     // Optional auth for the same reason as GET /:username — a private
     // author's documents are only listed for the author or accepted followers.
     let viewerProfileId: string | undefined;
@@ -153,7 +132,7 @@ export default async function profileRoutes(app: FastifyInstance) {
       viewerProfileId = undefined;
     }
 
-    const result = await getAuthorPublicDocuments(username, parsed.data, viewerProfileId);
+    const result = await getAuthorPublicDocuments(username, parsed, viewerProfileId);
 
     reply.send({
       data: result,
@@ -211,26 +190,7 @@ export default async function profileRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Update own profile',
       tags: ['profiles'],
-      body: {
-        type: 'object',
-        properties: {
-          username: { type: 'string', minLength: 3, maxLength: 30 },
-          displayName: { type: ['string', 'null'] },
-          bio: { type: ['string', 'null'], maxLength: 300 },
-          bioPrivate: { type: ['string', 'null'], maxLength: 150 },
-          avatarUrl: { type: ['string', 'null'] },
-          isPrivate: { type: 'boolean' },
-          socialLinks: {
-            type: ['object', 'null'],
-            properties: {
-              twitter: { type: 'string' },
-              github: { type: 'string' },
-              linkedin: { type: 'string' },
-              website: { type: 'string' },
-            },
-          },
-        },
-      },
+      body: toJsonSchema(updateProfileSchema),
       response: {
         200: {
           type: 'object',
@@ -258,24 +218,9 @@ export default async function profileRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = updateProfileSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = updateProfileSchema.parse(request.body);
     const userId = request.user.userId;
-    const profile = await updateProfile(userId, parsed.data);
+    const profile = await updateProfile(userId, parsed);
     reply.send({
       data: {
         ...profile,

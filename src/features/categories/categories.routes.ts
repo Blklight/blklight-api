@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { z } from 'zod';
 import {
   createCategory,
@@ -155,15 +156,7 @@ export default async function categoryRoutes(app: FastifyInstance) {
       summary: 'Create a category (admin only)',
       tags: ['categories'],
       security: [{ bearerAuth: [] }],
-      body: {
-        type: 'object',
-        required: ['name'],
-        properties: {
-          name: { type: 'string', minLength: 1, maxLength: 50 },
-          description: { type: 'string', maxLength: 200 },
-          parentId: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(createCategorySchema),
       response: {
         201: {
           type: 'object',
@@ -184,26 +177,11 @@ export default async function categoryRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = createCategorySchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = createCategorySchema.parse(request.body);
     const category = await createCategory(
-      parsed.data.name,
-      parsed.data.description,
-      parsed.data.parentId
+      parsed.name,
+      parsed.description,
+      parsed.parentId
     );
 
     reply.code(201).send({
@@ -226,14 +204,7 @@ export default async function categoryRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          name: { type: 'string', minLength: 1, maxLength: 50 },
-          description: { type: 'string', maxLength: 200 },
-          parentId: { type: 'string' },
-        },
-      },
+      body: toJsonSchema(updateCategorySchema),
       response: {
         200: {
           type: 'object',
@@ -255,23 +226,8 @@ export default async function categoryRoutes(app: FastifyInstance) {
     },
   }, async (request, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
-    const parsed = updateCategorySchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const category = await updateCategory(id, parsed.data);
+    const parsed = updateCategorySchema.parse(request.body);
+    const category = await updateCategory(id, parsed);
 
     reply.send({
       data: category,

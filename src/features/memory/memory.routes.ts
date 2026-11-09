@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { z } from 'zod';
 import { semanticSearch, getRelated, getDigest } from './memory.service';
 import { searchQuerySchema, relatedParamsSchema } from './memory.zod';
@@ -10,15 +11,7 @@ export default async function memoryRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Semantic search across indexed content',
       tags: ['memory'],
-      querystring: {
-        type: 'object',
-        properties: {
-          q: { type: 'string', minLength: 1 },
-          limit: { type: 'string' },
-        },
-        required: ['q'],
-        additionalProperties: false,
-      },
+      querystring: toJsonSchema(searchQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -33,23 +26,9 @@ export default async function memoryRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     requireFeature('memory');
 
-    const parsed = searchQuerySchema.safeParse(request.query);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = searchQuerySchema.parse(request.query);
     const userId = request.user.userId;
-    const results = await semanticSearch(userId, parsed.data.q, parsed.data.limit);
+    const results = await semanticSearch(userId, parsed.q, parsed.limit);
 
     reply.send({
       data: results,
@@ -63,18 +42,7 @@ export default async function memoryRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Get related items for a specific content piece',
       tags: ['memory'],
-      params: {
-        type: 'object',
-        properties: {
-          sourceType: {
-            type: 'string',
-            enum: ['note', 'document', 'journal_highlight', 'book_chapter'],
-          },
-          sourceId: { type: 'string', minLength: 1 },
-        },
-        required: ['sourceType', 'sourceId'],
-        additionalProperties: false,
-      },
+      params: toJsonSchema(relatedParamsSchema),
       querystring: {
         type: 'object',
         properties: {
@@ -95,22 +63,11 @@ export default async function memoryRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     requireFeature('memory');
 
-    const paramsParsed = relatedParamsSchema.safeParse(request.params);
-    if (!paramsParsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid params',
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const paramsParsed = relatedParamsSchema.parse(request.params);
     const userId = request.user.userId;
     const limit = (request.query as { limit?: number }).limit ?? 5;
 
-    const results = await getRelated(userId, paramsParsed.data.sourceType, paramsParsed.data.sourceId, limit);
+    const results = await getRelated(userId, paramsParsed.sourceType, paramsParsed.sourceId, limit);
 
     reply.send({
       data: results,

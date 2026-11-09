@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { createDocumentSchema, updateDocumentSchema, feedQuerySchema } from './documents.zod';
 import {
   createDocument,
@@ -205,20 +206,7 @@ export default async function documentRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Get public document feed',
       tags: ['documents'],
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-          type: { type: 'string' },
-          author: { type: 'string' },
-          q: { type: 'string', minLength: 1, maxLength: 100 },
-          sort: { type: 'string', enum: ['recent', 'popular'], default: 'recent' },
-          category: { type: 'string' },
-          tag: { type: 'string' },
-          organization: { type: 'string' },
-        },
-      },
+      querystring: toJsonSchema(feedQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -241,22 +229,7 @@ export default async function documentRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest<{ Querystring: { cursor?: string; limit?: number; type?: string; author?: string; q?: string; sort?: string; category?: string; tag?: string; organization?: string } }>, reply: FastifyReply) => {
-    const parsed = feedQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = feedQuerySchema.parse(request.query);
     // Auth is optional here: anonymous visitors get the feed without documents
     // from private authors, while an accepted follower of a private author
     // still sees them. Same try/catch pattern used by /:username/:slug.
@@ -268,7 +241,7 @@ export default async function documentRoutes(app: FastifyInstance) {
       profileId = undefined;
     }
 
-    const result = await getPublicFeed(parsed.data, profileId);
+    const result = await getPublicFeed(parsed, profileId);
 
     reply.send({
       data: result,
@@ -430,19 +403,7 @@ export default async function documentRoutes(app: FastifyInstance) {
       schema: {
         summary: 'Create a new document',
         tags: ['documents'],
-        body: {
-          type: 'object',
-          required: ['title', 'type'],
-          properties: {
-            title: { type: 'string', minLength: 1, maxLength: 200 },
-            abstract: { type: 'string', maxLength: 500 },
-            content: { type: 'object', additionalProperties: true },
-            coverImageUrl: { type: 'string', format: 'uri' },
-            type: { type: 'string' },
-            slug: { type: 'string', pattern: '^[a-z0-9-]+$' },
-            organizationId: { type: ['string', 'null'] },
-          },
-        },
+        body: toJsonSchema(createDocumentSchema),
         response: {
           201: {
             type: 'object',
@@ -472,23 +433,8 @@ export default async function documentRoutes(app: FastifyInstance) {
       }
 
       const authorId = profileResult[0]!.id;
-      const parsed = createDocumentSchema.safeParse(request.body);
-
-      if (!parsed.success) {
-        return reply.code(400).send({
-          data: null,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Request validation failed',
-            fields: Object.fromEntries(
-              parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-            ),
-          },
-          message: 'Validation failed',
-        });
-      }
-
-      const document = await createDocument(authorId, parsed.data);
+      const parsed = createDocumentSchema.parse(request.body);
+      const document = await createDocument(authorId, parsed);
 
       reply.code(201).send({
         data: document,
@@ -508,25 +454,7 @@ export default async function documentRoutes(app: FastifyInstance) {
           },
           required: ['id'],
         },
-        body: {
-          type: 'object',
-          properties: {
-            title: { type: 'string', minLength: 1, maxLength: 200 },
-            abstract: { type: 'string', maxLength: 500 },
-            content: { type: 'object', additionalProperties: true },
-            coverImageUrl: { type: 'string', format: 'uri' },
-            type: { type: 'string' },
-            slug: { type: 'string', pattern: '^[a-z0-9-]+$' },
-            typography: { type: 'string', enum: ['sans', 'serif', 'mono'] },
-            paperStyle: { type: 'object', additionalProperties: true },
-            paperTexture: { type: 'object', additionalProperties: true },
-            coverSettings: { type: 'object', additionalProperties: true },
-            documentHeader: { type: 'object', additionalProperties: true },
-            documentFooter: { type: 'object', additionalProperties: true },
-            documentSignature: { type: 'object', additionalProperties: true },
-            organizationId: { type: ['string', 'null'] },
-          },
-        },
+        body: toJsonSchema(updateDocumentSchema),
         response: {
           200: {
             type: 'object',
@@ -557,23 +485,8 @@ export default async function documentRoutes(app: FastifyInstance) {
       }
 
       const authorId = profileResult[0]!.id;
-      const parsed = updateDocumentSchema.safeParse(request.body);
-
-      if (!parsed.success) {
-        return reply.code(400).send({
-          data: null,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Request validation failed',
-            fields: Object.fromEntries(
-              parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-            ),
-          },
-          message: 'Validation failed',
-        });
-      }
-
-      const document = await updateDocument(authorId, id, parsed.data);
+      const parsed = updateDocumentSchema.parse(request.body);
+      const document = await updateDocument(authorId, id, parsed);
 
       reply.send({
         data: document,

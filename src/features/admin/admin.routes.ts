@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { getAdminOverview, listUsers, getUserDetail, updateUserRole } from './admin.service';
 import { listAllApps } from '../platform-apps/platform-apps.service';
 import { listUsersQuerySchema, updateRoleSchema } from './admin.zod';
@@ -34,36 +35,11 @@ export default async function adminRoutes(app: FastifyInstance) {
       summary: 'List users with filters (admin only)',
       tags: ['admin'],
       security: [{ bearerAuth: [] }],
-      querystring: {
-        type: 'object',
-        properties: {
-          search: { type: 'string' },
-          role: { type: 'string', enum: ['user', 'admin'] },
-          page: { type: 'integer', minimum: 1, default: 1 },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-          deleted: { type: 'string', enum: ['true', 'false'], default: 'false' },
-        },
-        additionalProperties: false,
-      },
+      querystring: toJsonSchema(listUsersQuerySchema),
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = listUsersQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const result = await listUsers(parsed.data);
+    const parsed = listUsersQuerySchema.parse(request.query);
+    const result = await listUsers(parsed);
 
     reply.send({
       data: result,
@@ -175,35 +151,13 @@ export default async function adminRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          role: { type: 'string', enum: ['user', 'admin'] },
-        },
-        required: ['role'],
-        additionalProperties: false,
-      },
+      body: toJsonSchema(updateRoleSchema),
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
-    const parsed = updateRoleSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = updateRoleSchema.parse(request.body);
     try {
-      const result = await updateUserRole(id, parsed.data.role);
+      const result = await updateUserRole(id, parsed.role);
 
       reply.send({
         data: result,

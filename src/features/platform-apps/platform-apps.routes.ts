@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { listApps, getUserApps, activateApps, deactivateApp, createApp, updateApp, createInvite, listInvites } from './platform-apps.service';
 import { activateAppsSchema, createAppSchema, updateAppSchema, createInviteSchema } from './platform-apps.zod';
 import { resolveProfileIdFromUserId } from '../../utils/profile';
@@ -94,18 +95,7 @@ export default async function platformAppsRoutes(app: FastifyInstance) {
       summary: 'Activate apps for current user',
       tags: ['platform-apps'],
       security: [{ bearerAuth: [] }],
-      body: {
-        type: 'object',
-        properties: {
-          apps: {
-            type: 'array',
-            items: { type: 'string' },
-            minItems: 1,
-          },
-        },
-        required: ['apps'],
-        additionalProperties: false,
-      },
+      body: toJsonSchema(activateAppsSchema),
       response: {
         200: {
           type: 'object',
@@ -119,23 +109,8 @@ export default async function platformAppsRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const profileId = await resolveProfileIdFromUserId(request.user.userId);
-    const parsed = activateAppsSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    await activateApps(profileId, parsed.data.apps);
+    const parsed = activateAppsSchema.parse(request.body);
+    await activateApps(profileId, parsed.apps);
 
     reply.send({
       data: null,
@@ -198,39 +173,11 @@ export default async function platformAppsRoutes(app: FastifyInstance) {
       summary: 'Create a new platform app (admin only)',
       tags: ['platform-apps'],
       security: [{ bearerAuth: [] }],
-      body: {
-        type: 'object',
-        properties: {
-          slug: { type: 'string', minLength: 1, maxLength: 50 },
-          name: { type: 'string', minLength: 1, maxLength: 100 },
-          description: { type: 'string', maxLength: 500 },
-          accessMode: { type: 'string', enum: ['open', 'beta'] },
-          iconUrl: { type: 'string' },
-          tagline: { type: 'string', maxLength: 200 },
-          category: { type: 'string', maxLength: 100 },
-        },
-        required: ['slug', 'name'],
-        additionalProperties: false,
-      },
+      body: toJsonSchema(createAppSchema),
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = createAppSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const appCreated = await createApp(parsed.data);
+    const parsed = createAppSchema.parse(request.body);
+    const appCreated = await createApp(parsed);
 
     reply.code(201).send({
       data: appCreated,
@@ -255,39 +202,12 @@ export default async function platformAppsRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          name: { type: 'string', minLength: 1, maxLength: 100 },
-          description: { type: 'string', maxLength: 500 },
-          accessMode: { type: 'string', enum: ['open', 'beta'] },
-          iconUrl: { type: 'string' },
-          tagline: { type: 'string', maxLength: 200 },
-          category: { type: 'string', maxLength: 100 },
-          isActive: { type: 'boolean' },
-        },
-        additionalProperties: false,
-      },
+      body: toJsonSchema(updateAppSchema),
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
-    const parsed = updateAppSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const appUpdated = await updateApp(id, parsed.data);
+    const parsed = updateAppSchema.parse(request.body);
+    const appUpdated = await updateApp(id, parsed);
 
     reply.send({
       data: appUpdated,
@@ -312,35 +232,13 @@ export default async function platformAppsRoutes(app: FastifyInstance) {
         },
         required: ['appId'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          profileId: { type: 'string', minLength: 1 },
-        },
-        required: ['profileId'],
-        additionalProperties: false,
-      },
+      body: toJsonSchema(createInviteSchema),
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { appId } = request.params as { appId: string };
-    const parsed = createInviteSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = createInviteSchema.parse(request.body);
     const callerProfileId = await resolveProfileIdFromUserId(request.user.userId);
-    const invite = await createInvite(appId, parsed.data.profileId, callerProfileId);
+    const invite = await createInvite(appId, parsed.profileId, callerProfileId);
 
     reply.code(201).send({
       data: invite,

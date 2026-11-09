@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import { perUserRateLimit } from '../../utils/rate-limit';
 import { z } from 'zod';
 import { toggleBookmark, getMyBookmarks } from './bookmarks.service';
@@ -77,13 +78,7 @@ export default async function bookmarksRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Get my bookmarks',
       tags: ['bookmarks'],
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-        },
-      },
+      querystring: toJsonSchema(bookmarkQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -112,24 +107,9 @@ export default async function bookmarksRoutes(app: FastifyInstance) {
     },
   }, async (request, reply) => {
     const { userId } = request.user;
-    const parsed = bookmarkQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = bookmarkQuerySchema.parse(request.query);
     const profileId = await resolveProfileIdFromUserId(userId);
-    const result = await getMyBookmarks(profileId, parsed.data);
+    const result = await getMyBookmarks(profileId, parsed);
 
     reply.send({
       data: result,

@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { toJsonSchema } from '../../utils/json-schema';
 import {
   createHighlightSchema,
   updateHighlightSchema,
@@ -99,18 +100,7 @@ export default async function highlightRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Update my highlight palette',
       tags: ['highlights'],
-      body: {
-        type: 'object',
-        required: ['colors'],
-        properties: {
-          colors: {
-            type: 'array',
-            items: { type: 'string', pattern: '^#[0-9A-Fa-f]{6}$' },
-            minItems: 5,
-            maxItems: 5,
-          },
-        },
-      },
+      body: toJsonSchema(updatePaletteSchema),
       response: {
         200: {
           type: 'object',
@@ -132,24 +122,9 @@ export default async function highlightRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { userId } = request.user;
-    const parsed = updatePaletteSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = updatePaletteSchema.parse(request.body);
     const profileId = await resolveProfileIdFromUserId(userId);
-    await updatePalette(profileId, parsed.data.colors);
+    await updatePalette(profileId, parsed.colors);
 
     reply.send({
       data: null,
@@ -162,13 +137,7 @@ export default async function highlightRoutes(app: FastifyInstance) {
     schema: {
       summary: 'Get my highlights grouped by document',
       tags: ['highlights'],
-      querystring: {
-        type: 'object',
-        properties: {
-          cursor: { type: 'string' },
-          limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-        },
-      },
+      querystring: toJsonSchema(highlightQuerySchema),
       response: {
         200: {
           type: 'object',
@@ -199,24 +168,9 @@ export default async function highlightRoutes(app: FastifyInstance) {
     Querystring: { cursor?: string; limit?: number }
   }>, reply: FastifyReply) => {
     const { userId } = request.user;
-    const parsed = highlightQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = highlightQuerySchema.parse(request.query);
     const profileId = await resolveProfileIdFromUserId(userId);
-    const result = await getMyHighlights(profileId, parsed.data);
+    const result = await getMyHighlights(profileId, parsed);
 
     reply.send({
       data: result,
@@ -236,27 +190,7 @@ export default async function highlightRoutes(app: FastifyInstance) {
         },
         required: ['id'],
       },
-      body: {
-        type: 'object',
-        properties: {
-          selection: {
-            type: 'object',
-            properties: {
-              text: { type: 'string', minLength: 1, maxLength: 2000 },
-              color: { type: 'string', pattern: '^#[0-9A-Fa-f]{6}$' },
-              position: {
-                type: 'object',
-                properties: {
-                  nodeIndex: { type: 'number' },
-                  offsetStart: { type: 'number' },
-                  offsetEnd: { type: 'number' },
-                },
-              },
-            },
-          },
-          annotation: { type: 'object', nullable: true },
-        },
-      },
+      body: toJsonSchema(updateHighlightSchema),
       response: {
         200: {
           type: 'object',
@@ -279,24 +213,9 @@ export default async function highlightRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     const { userId } = request.user;
     const { id } = request.params;
-    const parsed = updateHighlightSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = updateHighlightSchema.parse(request.body);
     const profileId = await resolveProfileIdFromUserId(userId);
-    const highlight = await updateHighlight(profileId, id, parsed.data);
+    const highlight = await updateHighlight(profileId, id, parsed);
 
     reply.send({
       data: highlight,
