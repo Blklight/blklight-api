@@ -2,6 +2,7 @@ import { z } from "zod";
 import { config } from "dotenv";
 import { expand } from "dotenv-expand";
 import { resolve } from "node:path";
+import { parseTrustProxy } from "../utils/trust-proxy";
 
 const nodeEnv = process.env.NODE_ENV ?? "development";
 expand(config({ path: resolve(process.cwd(), `.env.${nodeEnv}`) }));
@@ -102,6 +103,12 @@ const envSchema = z
       .enum(["fatal", "error", "warn", "info", "debug", "trace"])
       .default("info"),
     CORS_ORIGIN: z.string().default("http://localhost:3000"),
+    /**
+     * Fastify trustProxy. Unset = do not trust X-Forwarded-*. Behind a proxy set
+     * the hop count ("1") or the proxy IPs/CIDRs ("10.0.0.0/8,127.0.0.1"), or
+     * request.ip is the proxy's and every per-IP rate limit becomes global.
+     */
+    TRUST_PROXY: z.string().optional(),
     COOKIE_SAMESITE: z.enum(["strict", "lax", "none"]).default("strict"),
     MAX_SESSIONS_PER_USER: z.coerce.number().int().positive().default(5),
     SIGNATURE_ENCRYPTION_KEY: z.string().min(64).optional(),
@@ -222,6 +229,8 @@ if (!parsed.success) {
 type Env = z.infer<typeof envSchema> & {
   /** Bare origins allowed by @fastify/cors. Never contains "*". */
   CORS_ORIGINS: string[];
+  /** Value for Fastify's trustProxy option, derived from TRUST_PROXY. */
+  TRUST_PROXY_VALUE: boolean | number | string[];
 };
 
 export const env: Env = {
@@ -229,4 +238,5 @@ export const env: Env = {
   // superRefine above guarantees every entry satisfies entry === new URL(entry).origin,
   // so these can be forwarded to @fastify/cors without rewriting the browser origin.
   CORS_ORIGINS: splitList(parsed.data.CORS_ORIGIN),
+  TRUST_PROXY_VALUE: parseTrustProxy(parsed.data.TRUST_PROXY),
 };

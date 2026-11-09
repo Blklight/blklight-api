@@ -41,6 +41,7 @@ import adminRoutes from './features/admin/admin.routes';
 
 export async function buildApp() {
   const app = Fastify({
+    trustProxy: env.TRUST_PROXY_VALUE,
     logger: {
       level: env.LOG_LEVEL,
       transport:

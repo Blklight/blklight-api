@@ -12,6 +12,7 @@ vi.mock('../src/config/env', () => ({
     LOG_LEVEL: 'error',
     CORS_ORIGIN: 'http://localhost:3000',
     CORS_ORIGINS: ['http://localhost:3000'],
+    TRUST_PROXY_VALUE: false,
     COOKIE_SAMESITE: 'strict',
     MAX_SESSIONS_PER_USER: 5,
     RATE_LIMIT_DOCS_CREATE_MAX: 100000,
