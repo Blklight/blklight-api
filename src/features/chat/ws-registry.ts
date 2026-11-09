@@ -110,3 +110,26 @@ export function broadcastToChannel(channelId: string, payload: unknown): void {
     }
   }
 }
+
+/**
+ * Drop a profile's live subscriptions to the given channels, e.g. after it is
+ * removed from the server. Each socket serves one channel, so it is closed
+ * with 4403 and its close handler cleans the registry.
+ * @param channelIds - Channels the profile must stop receiving
+ * @param profileId - The profile losing access
+ */
+export function disconnectProfileFromChannels(channelIds: string[], profileId: string): void {
+  for (const channelId of channelIds) {
+    const set = channels.get(channelId);
+    if (!set) continue;
+    for (const subscriber of [...set]) {
+      if (subscriber.profileId !== profileId) continue;
+      unsubscribeChannel(channelId, subscriber.connection);
+      try {
+        subscriber.connection.close(4403, 'Removed from server');
+      } catch {
+        // already closing
+      }
+    }
+  }
+}

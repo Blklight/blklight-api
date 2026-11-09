@@ -7,7 +7,7 @@ import { NotFoundError, ForbiddenError, ConflictError, ValidationError } from '.
 import { resolveProfileIdFromUserId } from '../../utils/profile';
 import { encodeCursor, decodeCursor } from '../../utils/cursor';
 import { generateSlug, resolveUniqueSlug } from '../../utils/slug';
-import { broadcastToChannel } from './ws-registry';
+import { broadcastToChannel, disconnectProfileFromChannels } from './ws-registry';
 import type { CreateServerInput, CreateChannelInput, MessageQueryInput } from './chat.zod';
 
 export { resolveProfileIdFromUserId } from '../../utils/profile';
@@ -457,6 +457,12 @@ export async function removeMember(userId: string, serverId: string, memberId: s
   await db
     .delete(chatServerMembers)
     .where(eq(chatServerMembers.id, memberId));
+
+  const serverChannels = await db
+    .select({ id: chatChannels.id })
+    .from(chatChannels)
+    .where(eq(chatChannels.serverId, serverId));
+  disconnectProfileFromChannels(serverChannels.map((c) => c.id), member.profileId);
 }
 
 /**
