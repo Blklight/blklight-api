@@ -105,8 +105,8 @@ const envSchema = z
     CORS_ORIGIN: z.string().default("http://localhost:3000"),
     /**
      * Fastify trustProxy. Unset = do not trust X-Forwarded-*. Behind a proxy set
-     * the hop count ("1") or the proxy IPs/CIDRs ("10.0.0.0/8,127.0.0.1"), or
-     * request.ip is the proxy's and every per-IP rate limit becomes global.
+     * the proxy IPs/CIDRs ("10.0.0.0/8,127.0.0.1"), or request.ip is the
+     * proxy's and every per-IP rate limit becomes global. Hop counts are rejected.
      */
     TRUST_PROXY: z.string().optional(),
     COOKIE_SAMESITE: z.enum(["strict", "lax", "none"]).default("strict"),
@@ -230,7 +230,7 @@ type Env = z.infer<typeof envSchema> & {
   /** Bare origins allowed by @fastify/cors. Never contains "*". */
   CORS_ORIGINS: string[];
   /** Value for Fastify's trustProxy option, derived from TRUST_PROXY. */
-  TRUST_PROXY_VALUE: boolean | number | string[];
+  TRUST_PROXY_VALUE: boolean | string[];
 };
 
 export const env: Env = {

@@ -9,14 +9,18 @@ describe('parseTrustProxy', () => {
     expect(parseTrustProxy('false')).toBe(false);
   });
 
-  it('parses true, hop counts and address lists', () => {
+  it('parses true and address lists', () => {
     expect(parseTrustProxy('true')).toBe(true);
-    expect(parseTrustProxy('1')).toBe(1);
     expect(parseTrustProxy('10.0.0.0/8, 127.0.0.1')).toEqual(['10.0.0.0/8', '127.0.0.1']);
   });
 
-  it('makes request.ip the client address behind one proxy hop', async () => {
-    const app = Fastify({ trustProxy: parseTrustProxy('1') });
+  it('rejects hop counts, which let direct clients spoof X-Forwarded-For', () => {
+    expect(() => parseTrustProxy('1')).toThrow(/hop counts are not supported/);
+  });
+
+  it('makes request.ip the client address behind a trusted proxy', async () => {
+    // app.inject connects from 127.0.0.1, which plays the proxy here.
+    const app = Fastify({ trustProxy: parseTrustProxy('127.0.0.1') });
     app.get('/ip', async (request) => ({ ip: request.ip }));
 
     const response = await app.inject({
