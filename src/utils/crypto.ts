@@ -130,6 +130,17 @@ export function hashRefreshToken(refreshToken: string): string {
 }
 
 /**
+ * Hash a one-time email token (verification, password reset) for storage.
+ * Same rationale as hashRefreshToken: the link carries 32 random bytes, so a
+ * fast digest is enough, and a leaked row cannot be replayed.
+ * @param token - Plaintext token from the emailed link
+ * @returns SHA-256 hash as hex string
+ */
+export function hashEmailToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+/**
  * Generate an article signature using HMAC-SHA256.
  * @param userHash - The user's public hash
  * @param documentHash - The document content hash

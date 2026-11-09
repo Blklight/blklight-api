@@ -6,7 +6,7 @@ import { db } from '../../db/index';
 import { users, sessions } from '../auth/auth.schema';
 import { emailVerifications, passwordResets, emailQueue, NewEmailQueue } from './email.schema';
 import { renderVerificationEmail, renderWelcomeEmail, renderPasswordResetEmail } from './email.templates';
-import { hashPassword } from '../../utils/crypto';
+import { hashEmailToken, hashPassword } from '../../utils/crypto';
 import { ValidationError, NotFoundError } from '../../utils/errors';
 import { env } from '../../config/env';
 import { features } from '../../config/features';
@@ -79,14 +79,14 @@ async function sendVerificationEmail(
     .values({
       id: createId(),
       userId,
-      token,
+      token: hashEmailToken(token),
       expiresAt,
       createdAt: new Date(),
     })
     .onConflictDoUpdate({
       target: emailVerifications.userId,
       set: {
-        token,
+        token: hashEmailToken(token),
         expiresAt,
         createdAt: new Date(),
       },
@@ -106,7 +106,7 @@ async function verifyEmail(token: string): Promise<void> {
   const [verification] = await db
     .select()
     .from(emailVerifications)
-    .where(eq(emailVerifications.token, token))
+    .where(eq(emailVerifications.token, hashEmailToken(token)))
     .limit(1);
 
   if (!verification) {
@@ -180,7 +180,7 @@ async function sendPasswordResetEmail(email: string): Promise<void> {
   await db.insert(passwordResets).values({
     id: createId(),
     userId: user.id,
-    token,
+    token: hashEmailToken(token),
     expiresAt,
     usedAt: null,
     createdAt: new Date(),
@@ -202,7 +202,7 @@ async function resetPassword(token: string, newPassword: string): Promise<void> 
     .from(passwordResets)
     .where(
       and(
-        eq(passwordResets.token, token),
+        eq(passwordResets.token, hashEmailToken(token)),
         isNull(passwordResets.usedAt)
       )
     )
@@ -223,15 +223,22 @@ async function resetPassword(token: string, newPassword: string): Promise<void> 
   const { hash, salt } = await hashPassword(newPassword);
 
   await db.transaction(async (tx) => {
+    // Claim the token inside the transaction: of two concurrent resets with the
+    // same link, only the one that flips usedAt from null proceeds.
+    const claimed = await tx
+      .update(passwordResets)
+      .set({ usedAt: new Date() })
+      .where(and(eq(passwordResets.id, reset.id), isNull(passwordResets.usedAt)))
+      .returning({ id: passwordResets.id });
+
+    if (claimed.length === 0) {
+      throw new NotFoundError('Invalid reset token');
+    }
+
     await tx
       .update(users)
       .set({ passwordHash: hash, salt, updatedAt: new Date() })
       .where(eq(users.id, reset.userId));
-
-    await tx
-      .update(passwordResets)
-      .set({ usedAt: new Date() })
-      .where(eq(passwordResets.id, reset.id));
 
     await tx
       .delete(sessions)

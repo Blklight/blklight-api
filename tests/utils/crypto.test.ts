@@ -8,6 +8,7 @@ import {
   verifyArticleSignature,
   encryptSecret,
   decryptSecret,
+  hashEmailToken,
   generatePublicIdentifier,
 } from '../../src/utils/crypto';
 
@@ -123,6 +124,14 @@ describe('crypto', () => {
     it('generatePublicIdentifier format is PLT-xxxxxxxx.xxxxxxxx', () => {
       const id = generatePublicIdentifier('abcdef0123456789', '1234567890abcdef');
       expect(id).toMatch(/^PLT-[a-f0-9]{8}\.[a-f0-9]{8}$/);
+    });
+  });
+  describe('hashEmailToken', () => {
+    it('is deterministic and never returns the plaintext token', () => {
+      const token = 'a'.repeat(64);
+      expect(hashEmailToken(token)).toBe(hashEmailToken(token));
+      expect(hashEmailToken(token)).not.toBe(token);
+      expect(hashEmailToken(token)).toMatch(/^[0-9a-f]{64}$/);
     });
   });
 });
