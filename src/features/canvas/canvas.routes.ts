@@ -82,24 +82,9 @@ export default async function canvasRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const userId = request.user.userId;
-    const parsed = updatePositionsSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = updatePositionsSchema.parse(request.body);
     try {
-      await updatePositions(userId, parsed.data.positions);
+      await updatePositions(userId, parsed.positions);
 
       reply.send({
         data: null,

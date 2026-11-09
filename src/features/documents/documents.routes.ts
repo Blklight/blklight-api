@@ -241,22 +241,7 @@ export default async function documentRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest<{ Querystring: { cursor?: string; limit?: number; type?: string; author?: string; q?: string; sort?: string; category?: string; tag?: string; organization?: string } }>, reply: FastifyReply) => {
-    const parsed = feedQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = feedQuerySchema.parse(request.query);
     // Auth is optional here: anonymous visitors get the feed without documents
     // from private authors, while an accepted follower of a private author
     // still sees them. Same try/catch pattern used by /:username/:slug.
@@ -268,7 +253,7 @@ export default async function documentRoutes(app: FastifyInstance) {
       profileId = undefined;
     }
 
-    const result = await getPublicFeed(parsed.data, profileId);
+    const result = await getPublicFeed(parsed, profileId);
 
     reply.send({
       data: result,
@@ -472,23 +457,8 @@ export default async function documentRoutes(app: FastifyInstance) {
       }
 
       const authorId = profileResult[0]!.id;
-      const parsed = createDocumentSchema.safeParse(request.body);
-
-      if (!parsed.success) {
-        return reply.code(400).send({
-          data: null,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Request validation failed',
-            fields: Object.fromEntries(
-              parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-            ),
-          },
-          message: 'Validation failed',
-        });
-      }
-
-      const document = await createDocument(authorId, parsed.data);
+      const parsed = createDocumentSchema.parse(request.body);
+      const document = await createDocument(authorId, parsed);
 
       reply.code(201).send({
         data: document,
@@ -557,23 +527,8 @@ export default async function documentRoutes(app: FastifyInstance) {
       }
 
       const authorId = profileResult[0]!.id;
-      const parsed = updateDocumentSchema.safeParse(request.body);
-
-      if (!parsed.success) {
-        return reply.code(400).send({
-          data: null,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Request validation failed',
-            fields: Object.fromEntries(
-              parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-            ),
-          },
-          message: 'Validation failed',
-        });
-      }
-
-      const document = await updateDocument(authorId, id, parsed.data);
+      const parsed = updateDocumentSchema.parse(request.body);
+      const document = await updateDocument(authorId, id, parsed);
 
       reply.send({
         data: document,

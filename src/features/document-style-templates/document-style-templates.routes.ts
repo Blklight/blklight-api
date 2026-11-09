@@ -147,23 +147,8 @@ export default async function styleTemplateRoutes(app: FastifyInstance) {
     }
 
     const authorId = profileResult[0]!.id;
-    const parsed = createStyleTemplateSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const template = await createStyleTemplate(authorId, parsed.data);
+    const parsed = createStyleTemplateSchema.parse(request.body);
+    const template = await createStyleTemplate(authorId, parsed);
 
     reply.code(201).send({
       data: template,

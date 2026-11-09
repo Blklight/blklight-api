@@ -103,23 +103,8 @@ export default async function workspaceRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { userId } = request.user;
-    const parsed = updateColorLabelsSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    await updateColorLabels(userId, parsed.data.colorLabels);
+    const parsed = updateColorLabelsSchema.parse(request.body);
+    await updateColorLabels(userId, parsed.colorLabels);
 
     reply.send({
       data: null,

@@ -47,23 +47,8 @@ export default async function adminRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = listUsersQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const result = await listUsers(parsed.data);
+    const parsed = listUsersQuerySchema.parse(request.query);
+    const result = await listUsers(parsed);
 
     reply.send({
       data: result,
@@ -186,24 +171,9 @@ export default async function adminRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
-    const parsed = updateRoleSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = updateRoleSchema.parse(request.body);
     try {
-      const result = await updateUserRole(id, parsed.data.role);
+      const result = await updateUserRole(id, parsed.role);
 
       reply.send({
         data: result,

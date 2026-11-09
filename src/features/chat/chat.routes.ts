@@ -67,23 +67,6 @@ interface MessageQuery {
   limit?: number;
 }
 
-function sendValidationError(
-  reply: FastifyReply,
-  parsed: { success: false; error: { issues: { path: PropertyKey[]; message: string }[] } }
-) {
-  return reply.code(400).send({
-    data: null,
-    error: {
-      code: 'VALIDATION_ERROR',
-      message: 'Request validation failed',
-      fields: Object.fromEntries(
-        parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-      ),
-    },
-    message: 'Validation failed',
-  });
-}
-
 export default async function chatRoutes(app: FastifyInstance) {
   app.post('/chat/servers', {
     preHandler: [(request: FastifyRequest, reply: FastifyReply) => app.authenticate(request, reply), requireAdmin],
@@ -111,13 +94,8 @@ export default async function chatRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = createServerSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return sendValidationError(reply, parsed);
-    }
-
-    const server = await createServer(request.user.userId, parsed.data);
+    const parsed = createServerSchema.parse(request.body);
+    const server = await createServer(request.user.userId, parsed);
 
     reply.code(201).send({
       data: server,
@@ -241,13 +219,8 @@ export default async function chatRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { serverId } = request.params as ServerParams;
-    const parsed = addMemberSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return sendValidationError(reply, parsed);
-    }
-
-    const member = await addMember(request.user.userId, serverId, parsed.data.profileId);
+    const parsed = addMemberSchema.parse(request.body);
+    const member = await addMember(request.user.userId, serverId, parsed.profileId);
 
     reply.code(201).send({
       data: member,
@@ -328,18 +301,13 @@ export default async function chatRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { serverId, memberId } = request.params as ServerMemberParams;
-    const parsed = decideMemberSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return sendValidationError(reply, parsed);
-    }
-
-    const member = await decideMember(request.user.userId, serverId, memberId, parsed.data.status);
+    const parsed = decideMemberSchema.parse(request.body);
+    const member = await decideMember(request.user.userId, serverId, memberId, parsed.status);
 
     reply.send({
       data: member,
       error: null,
-      message: `Member ${parsed.data.status}`,
+      message: `Member ${parsed.status}`,
     });
   });
 
@@ -413,13 +381,8 @@ export default async function chatRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { serverId } = request.params as ServerParams;
-    const parsed = createChannelSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return sendValidationError(reply, parsed);
-    }
-
-    const channel = await createChannel(request.user.userId, serverId, parsed.data);
+    const parsed = createChannelSchema.parse(request.body);
+    const channel = await createChannel(request.user.userId, serverId, parsed);
 
     reply.code(201).send({
       data: channel,
@@ -502,13 +465,8 @@ export default async function chatRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { channelId } = request.params as ChannelParams;
-    const parsed = createMessageSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return sendValidationError(reply, parsed);
-    }
-
-    const message = await sendMessage(request.user.userId, channelId, parsed.data.content);
+    const parsed = createMessageSchema.parse(request.body);
+    const message = await sendMessage(request.user.userId, channelId, parsed.content);
 
     reply.code(201).send({
       data: message,
@@ -557,13 +515,8 @@ export default async function chatRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { channelId } = request.params as ChannelParams;
-    const parsed = messageQuerySchema.safeParse(request.query as MessageQuery);
-
-    if (!parsed.success) {
-      return sendValidationError(reply, parsed);
-    }
-
-    const result = await listMessages(request.user.userId, channelId, parsed.data);
+    const parsed = messageQuerySchema.parse(request.query as MessageQuery);
+    const result = await listMessages(request.user.userId, channelId, parsed);
 
     reply.send({
       data: result,
@@ -605,13 +558,8 @@ export default async function chatRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { messageId } = request.params as MessageParams;
-    const parsed = updateMessageSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return sendValidationError(reply, parsed);
-    }
-
-    const message = await editMessage(request.user.userId, messageId, parsed.data.content);
+    const parsed = updateMessageSchema.parse(request.body);
+    const message = await editMessage(request.user.userId, messageId, parsed.content);
 
     reply.send({
       data: message,

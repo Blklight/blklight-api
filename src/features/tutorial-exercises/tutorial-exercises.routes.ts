@@ -135,22 +135,8 @@ export default async function tutorialExerciseRoutes(app: FastifyInstance) {
 
     const profileId = await resolveProfileIdFromUserId(userId);
 
-    const parsed = createExerciseSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const exercise = await createExercise(profileId, id, parsed.data);
+    const parsed = createExerciseSchema.parse(request.body);
+    const exercise = await createExercise(profileId, id, parsed);
 
     reply.code(201).send({
       data: exercise,
@@ -222,22 +208,8 @@ export default async function tutorialExerciseRoutes(app: FastifyInstance) {
 
     const profileId = await resolveProfileIdFromUserId(userId);
 
-    const parsed = updateExerciseSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const exercise = await updateExercise(profileId, id, parsed.data);
+    const parsed = updateExerciseSchema.parse(request.body);
+    const exercise = await updateExercise(profileId, id, parsed);
 
     reply.send({
       data: exercise,
@@ -340,22 +312,8 @@ export default async function tutorialExerciseRoutes(app: FastifyInstance) {
 
     const profileId = await resolveProfileIdFromUserId(userId);
 
-    const parsed = submitAnswerSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const result = await submitAnswer(profileId, id, parsed.data);
+    const parsed = submitAnswerSchema.parse(request.body);
+    const result = await submitAnswer(profileId, id, parsed);
 
     reply.send({
       data: result,

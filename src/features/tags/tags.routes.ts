@@ -48,23 +48,8 @@ export default async function tagRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = popularTagsQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const tags = await getPopularTags(parsed.data.limit ?? 20);
+    const parsed = popularTagsQuerySchema.parse(request.query);
+    const tags = await getPopularTags(parsed.limit ?? 20);
 
     reply.send({
       data: tags,

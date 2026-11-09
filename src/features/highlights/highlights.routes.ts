@@ -132,24 +132,9 @@ export default async function highlightRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { userId } = request.user;
-    const parsed = updatePaletteSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = updatePaletteSchema.parse(request.body);
     const profileId = await resolveProfileIdFromUserId(userId);
-    await updatePalette(profileId, parsed.data.colors);
+    await updatePalette(profileId, parsed.colors);
 
     reply.send({
       data: null,
@@ -199,24 +184,9 @@ export default async function highlightRoutes(app: FastifyInstance) {
     Querystring: { cursor?: string; limit?: number }
   }>, reply: FastifyReply) => {
     const { userId } = request.user;
-    const parsed = highlightQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = highlightQuerySchema.parse(request.query);
     const profileId = await resolveProfileIdFromUserId(userId);
-    const result = await getMyHighlights(profileId, parsed.data);
+    const result = await getMyHighlights(profileId, parsed);
 
     reply.send({
       data: result,
@@ -279,24 +249,9 @@ export default async function highlightRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     const { userId } = request.user;
     const { id } = request.params;
-    const parsed = updateHighlightSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = updateHighlightSchema.parse(request.body);
     const profileId = await resolveProfileIdFromUserId(userId);
-    const highlight = await updateHighlight(profileId, id, parsed.data);
+    const highlight = await updateHighlight(profileId, id, parsed);
 
     reply.send({
       data: highlight,

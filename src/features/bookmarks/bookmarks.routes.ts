@@ -112,24 +112,9 @@ export default async function bookmarksRoutes(app: FastifyInstance) {
     },
   }, async (request, reply) => {
     const { userId } = request.user;
-    const parsed = bookmarkQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = bookmarkQuerySchema.parse(request.query);
     const profileId = await resolveProfileIdFromUserId(userId);
-    const result = await getMyBookmarks(profileId, parsed.data);
+    const result = await getMyBookmarks(profileId, parsed);
 
     reply.send({
       data: result,

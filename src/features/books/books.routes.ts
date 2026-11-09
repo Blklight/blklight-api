@@ -70,23 +70,8 @@ export default async function bookRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest<{
     Querystring: { cursor?: string; limit?: number; category?: string; tag?: string; q?: string; sort?: string }
   }>, reply: FastifyReply) => {
-    const parsed = bookFeedQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const result = await getPublicBookFeed(parsed.data);
+    const parsed = bookFeedQuerySchema.parse(request.query);
+    const result = await getPublicBookFeed(parsed);
 
     reply.send({
       data: result,
@@ -272,23 +257,8 @@ export default async function bookRoutes(app: FastifyInstance) {
     }
 
     const authorId = profileResult[0]!.id;
-    const parsed = createBookSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const book = await createBook(authorId, parsed.data);
+    const parsed = createBookSchema.parse(request.body);
+    const book = await createBook(authorId, parsed);
 
     reply.code(201).send({
       data: book,
@@ -357,23 +327,8 @@ export default async function bookRoutes(app: FastifyInstance) {
     }
 
     const authorId = profileResult[0]!.id;
-    const parsed = updateBookSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const book = await updateBook(authorId, id, parsed.data);
+    const parsed = updateBookSchema.parse(request.body);
+    const book = await updateBook(authorId, id, parsed);
 
     reply.send({
       data: book,
@@ -541,23 +496,8 @@ export default async function bookRoutes(app: FastifyInstance) {
     }
 
     const authorId = profileResult[0]!.id;
-    const parsed = addChapterSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const chapter = await addChapter(authorId, id, parsed.data);
+    const parsed = addChapterSchema.parse(request.body);
+    const chapter = await addChapter(authorId, id, parsed);
 
     reply.code(201).send({
       data: chapter,
@@ -624,23 +564,8 @@ export default async function bookRoutes(app: FastifyInstance) {
     }
 
     const authorId = profileResult[0]!.id;
-    const parsed = updateChapterSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const chapter = await updateChapter(authorId, chapterId, parsed.data);
+    const parsed = updateChapterSchema.parse(request.body);
+    const chapter = await updateChapter(authorId, chapterId, parsed);
 
     reply.send({
       data: chapter,
@@ -765,23 +690,8 @@ export default async function bookRoutes(app: FastifyInstance) {
     }
 
     const authorId = profileResult[0]!.id;
-    const parsed = reorderChaptersSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    await reorderChapters(authorId, id, parsed.data);
+    const parsed = reorderChaptersSchema.parse(request.body);
+    await reorderChapters(authorId, id, parsed);
 
     reply.send({
       data: null,
@@ -866,23 +776,8 @@ export default async function bookRoutes(app: FastifyInstance) {
     }
 
     const authorId = profileResult[0]!.id;
-    const parsed = updateTocSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const book = await updateToc(authorId, id, parsed.data);
+    const parsed = updateTocSchema.parse(request.body);
+    const book = await updateToc(authorId, id, parsed);
 
     reply.send({
       data: book,

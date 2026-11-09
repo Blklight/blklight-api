@@ -184,26 +184,11 @@ export default async function categoryRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = createCategorySchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = createCategorySchema.parse(request.body);
     const category = await createCategory(
-      parsed.data.name,
-      parsed.data.description,
-      parsed.data.parentId
+      parsed.name,
+      parsed.description,
+      parsed.parentId
     );
 
     reply.code(201).send({
@@ -255,23 +240,8 @@ export default async function categoryRoutes(app: FastifyInstance) {
     },
   }, async (request, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
-    const parsed = updateCategorySchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const category = await updateCategory(id, parsed.data);
+    const parsed = updateCategorySchema.parse(request.body);
+    const category = await updateCategory(id, parsed);
 
     reply.send({
       data: category,

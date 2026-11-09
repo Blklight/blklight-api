@@ -113,22 +113,8 @@ export default async function authRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = registerSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const { email, username, password } = parsed.data;
+    const parsed = registerSchema.parse(request.body);
+    const { email, username, password } = parsed;
     const { user, refreshToken } = await registerUser(email, username, password);
 
     const accessToken = app.jwt.sign(
@@ -208,22 +194,8 @@ export default async function authRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = loginSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    const { identifier, password, rememberMe } = parsed.data;
+    const parsed = loginSchema.parse(request.body);
+    const { identifier, password, rememberMe } = parsed;
     const { userId, refreshToken, role, email } = await loginUser(identifier, password, rememberMe);
 
     const accessToken = app.jwt.sign(
@@ -464,24 +436,9 @@ export default async function authRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = z.object({ username: usernameSchema }).safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = z.object({ username: usernameSchema }).parse(request.body);
     const userId = request.user.userId;
-    await setOnboardingUsername(userId, parsed.data.username);
+    await setOnboardingUsername(userId, parsed.username);
 
     reply.send({
       data: null,
@@ -543,22 +500,8 @@ export default async function authRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     requireFeature('email');
 
-    const parsed = z.object({ token: z.string() }).safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    await verifyEmail(parsed.data.token);
+    const parsed = z.object({ token: z.string() }).parse(request.body);
+    await verifyEmail(parsed.token);
 
     reply.send({
       data: null,
@@ -648,22 +591,8 @@ export default async function authRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     requireFeature('email');
 
-    const parsed = z.object({ email: z.string().email() }).safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    await sendPasswordResetEmail(parsed.data.email);
+    const parsed = z.object({ email: z.string().email() }).parse(request.body);
+    await sendPasswordResetEmail(parsed.email);
 
     reply.send({
       data: null,
@@ -701,23 +630,8 @@ export default async function authRoutes(app: FastifyInstance) {
     const parsed = z.object({
       token: z.string(),
       password: z.string().min(8).max(128),
-    }).safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
-    await resetPassword(parsed.data.token, parsed.data.password);
+    }).parse(request.body);
+    await resetPassword(parsed.token, parsed.password);
 
     reply.send({
       data: null,

@@ -123,23 +123,6 @@ interface OrgMemberParams {
   profileId: string;
 }
 
-function sendValidationError(
-  reply: FastifyReply,
-  parsed: { success: false; error: { issues: { path: PropertyKey[]; message: string }[] } }
-) {
-  return reply.code(400).send({
-    data: null,
-    error: {
-      code: 'VALIDATION_ERROR',
-      message: 'Request validation failed',
-      fields: Object.fromEntries(
-        parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-      ),
-    },
-    message: 'Validation failed',
-  });
-}
-
 export default async function organizationRoutes(app: FastifyInstance) {
   app.get('/org/:orgname', {
     schema: {
@@ -206,12 +189,7 @@ export default async function organizationRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest<{ Params: { orgname: string } }>, reply: FastifyReply) => {
     const { orgname } = request.params;
-    const parsed = organizationFeedQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return sendValidationError(reply, parsed);
-    }
-
+    const parsed = organizationFeedQuerySchema.parse(request.query);
     // Auth is optional: anonymous visitors can list the documents of a public
     // organization, while an accepted member of a private one sees it too.
     let profileId: string | undefined;
@@ -222,7 +200,7 @@ export default async function organizationRoutes(app: FastifyInstance) {
       profileId = undefined;
     }
 
-    const result = await getOrganizationDocuments(orgname, parsed.data, profileId);
+    const result = await getOrganizationDocuments(orgname, parsed, profileId);
 
     reply.send({
       data: result,
@@ -262,14 +240,9 @@ export default async function organizationRoutes(app: FastifyInstance) {
         },
       },
     }, async (request: FastifyRequest, reply: FastifyReply) => {
-      const parsed = createOrganizationSchema.safeParse(request.body);
-
-      if (!parsed.success) {
-        return sendValidationError(reply, parsed);
-      }
-
+      const parsed = createOrganizationSchema.parse(request.body);
       const profileId = await resolveProfileIdFromUserId(request.user.userId);
-      const org = await createOrganization(profileId, parsed.data);
+      const org = await createOrganization(profileId, parsed);
 
       reply.code(201).send({
         data: org,
@@ -324,14 +297,9 @@ export default async function organizationRoutes(app: FastifyInstance) {
       },
     }, async (request: FastifyRequest<{ Params: OrgParams }>, reply: FastifyReply) => {
       const { id } = request.params;
-      const parsed = inviteMemberSchema.safeParse(request.body);
-
-      if (!parsed.success) {
-        return sendValidationError(reply, parsed);
-      }
-
+      const parsed = inviteMemberSchema.parse(request.body);
       const profileId = await resolveProfileIdFromUserId(request.user.userId);
-      const member = await inviteMember(id, profileId, parsed.data.profileId);
+      const member = await inviteMember(id, profileId, parsed.profileId);
 
       reply.code(201).send({
         data: member,
@@ -365,19 +333,14 @@ export default async function organizationRoutes(app: FastifyInstance) {
       },
     }, async (request: FastifyRequest<{ Params: OrgParams }>, reply: FastifyReply) => {
       const { id } = request.params;
-      const parsed = decideMembershipSchema.safeParse(request.body);
-
-      if (!parsed.success) {
-        return sendValidationError(reply, parsed);
-      }
-
+      const parsed = decideMembershipSchema.parse(request.body);
       const profileId = await resolveProfileIdFromUserId(request.user.userId);
-      const member = await decideMembership(id, profileId, parsed.data.decision);
+      const member = await decideMembership(id, profileId, parsed.decision);
 
       reply.send({
         data: member,
         error: null,
-        message: `Invitation ${parsed.data.decision}`,
+        message: `Invitation ${parsed.decision}`,
       });
     });
 

@@ -127,22 +127,7 @@ export default async function profileRoutes(app: FastifyInstance) {
     },
   }, async (request: FastifyRequest<{ Params: { username: string }; Querystring: { cursor?: string; limit?: number; type?: string } }>, reply: FastifyReply) => {
     const { username } = request.params;
-    const parsed = authorFeedQuerySchema.safeParse(request.query);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = authorFeedQuerySchema.parse(request.query);
     // Optional auth for the same reason as GET /:username — a private
     // author's documents are only listed for the author or accepted followers.
     let viewerProfileId: string | undefined;
@@ -153,7 +138,7 @@ export default async function profileRoutes(app: FastifyInstance) {
       viewerProfileId = undefined;
     }
 
-    const result = await getAuthorPublicDocuments(username, parsed.data, viewerProfileId);
+    const result = await getAuthorPublicDocuments(username, parsed, viewerProfileId);
 
     reply.send({
       data: result,
@@ -258,24 +243,9 @@ export default async function profileRoutes(app: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const parsed = updateProfileSchema.safeParse(request.body);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        data: null,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          fields: Object.fromEntries(
-            parsed.error.issues.map((i) => [i.path.join('.'), i.message])
-          ),
-        },
-        message: 'Validation failed',
-      });
-    }
-
+    const parsed = updateProfileSchema.parse(request.body);
     const userId = request.user.userId;
-    const profile = await updateProfile(userId, parsed.data);
+    const profile = await updateProfile(userId, parsed);
     reply.send({
       data: {
         ...profile,
