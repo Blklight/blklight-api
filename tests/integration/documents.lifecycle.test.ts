@@ -511,6 +511,26 @@ describe('document lifecycle (integration)', () => {
     expect(secondBody.data.items[0]!.id).not.toBe(firstBody.data.items[0]!.id);
   });
 
+  it('keeps contracts and notes out of the public feed', async () => {
+    const account = await createAccount('feedtypes');
+    const title = `${PREFIX}Contract only`;
+    const res = await api(account, 'POST', '/api/v1/documents', {
+      title,
+      type: 'contract',
+      categoryId,
+      content: { type: 'doc', content: [{ type: 'paragraph' }] },
+    });
+    const id = (res.json() as { data: { id: string } }).data.id;
+    createdDocumentIds.push(id);
+    const published = await api(account, 'PATCH', `/api/v1/documents/${id}/publish`);
+    expect(published.statusCode).toBe(200);
+
+    const feed = await api(null, 'GET', `/api/v1/documents?q=${encodeURIComponent(title)}`);
+    const body = feed.json() as { data: { items: { id: string }[]; total: number } };
+    expect(body.data.items.map((item) => item.id)).not.toContain(id);
+    expect(body.data.total).toBe(0);
+  });
+
   it('feed cards carry the design preview (typography, paper style and texture)', async () => {
     const account = await createAccount('feedstyle');
     const { id } = await createDraft(account, `${PREFIX}Styled`);

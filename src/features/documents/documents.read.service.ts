@@ -192,6 +192,8 @@ export interface DocumentFull {
   exercises?: unknown[];
 }
 
+export const FEED_DOCUMENT_TYPES = ['article', 'tutorial', 'project'];
+
 /**
  * Get public feed of published documents with cursor-based pagination.
  * Documents from private authors are only included when the viewer is that
@@ -217,6 +219,8 @@ export async function getPublicFeed(params: FeedParams, viewerProfileId?: string
     conditions.push(eq(documents.organizationId, org.id));
   }
 
+  // Only these types are published to the public feed; contracts and notes stay on their own pages.
+  conditions.push(inArray(documentTypes.name, FEED_DOCUMENT_TYPES));
   if (params.type) {
     conditions.push(eq(documentTypes.name, params.type));
   }
