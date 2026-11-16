@@ -102,6 +102,14 @@ export const DOCUMENT_CARD_SCHEMA = {
     category: CATEGORY_REF_SCHEMA,
     tags: { type: 'array', items: TAG_REF_SCHEMA },
     organization: ORGANIZATION_REF_SCHEMA,
+    style: {
+      type: ['object', 'null'],
+      properties: {
+        typography: { type: 'string' },
+        paperStyle: { type: ['object', 'null'], additionalProperties: true },
+        paperTexture: { type: ['object', 'null'], additionalProperties: true },
+      },
+    },
   },
 };
 

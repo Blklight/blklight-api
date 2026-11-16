@@ -129,6 +129,12 @@ export interface DocumentCard {
     slug: string;
   }[];
   organization: OrganizationRef | null;
+  /** Design preview for feed cards (public feed only for now); null without a style row. */
+  style?: {
+    typography: string;
+    paperStyle: Record<string, unknown> | null;
+    paperTexture: Record<string, unknown> | null;
+  } | null;
 }
 
 export interface AuthorFeedParams {
@@ -323,6 +329,9 @@ async function runDocumentFeed(options: {
       organizationOrgname: organizations.orgname,
       organizationName: organizations.name,
       organizationIsPrivate: organizations.isPrivate,
+      styleTypography: documentStyles.typography,
+      stylePaperStyle: documentStyles.paperStyle,
+      stylePaperTexture: documentStyles.paperTexture,
     })
     .from(documents)
     .innerJoin(documentTypes, eq(documents.typeId, documentTypes.id))
@@ -331,6 +340,7 @@ async function runDocumentFeed(options: {
     .leftJoin(documentCategories, eq(documents.id, documentCategories.documentId))
     .leftJoin(categories, eq(documentCategories.categoryId, categories.id))
     .leftJoin(organizations, eq(documents.organizationId, organizations.id))
+    .leftJoin(documentStyles, eq(documentStyles.documentId, documents.id))
     .where(and(...pageConditions))
     .orderBy(sort === 'popular' ? desc(likesSubquery) : desc(documents.publishedAt), desc(documents.id))
     .limit(limit + 1);
@@ -391,6 +401,13 @@ async function runDocumentFeed(options: {
         viewerProfileId,
         r.authorProfileId
       ),
+      style: r.styleTypography
+        ? {
+            typography: r.styleTypography,
+            paperStyle: (r.stylePaperStyle as Record<string, unknown> | null) ?? null,
+            paperTexture: (r.stylePaperTexture as Record<string, unknown> | null) ?? null,
+          }
+        : null,
     };
   });
 

@@ -510,6 +510,27 @@ describe('document lifecycle (integration)', () => {
     expect(secondBody.data.items).toHaveLength(1);
     expect(secondBody.data.items[0]!.id).not.toBe(firstBody.data.items[0]!.id);
   });
+
+  it('feed cards carry the design preview (typography, paper style and texture)', async () => {
+    const account = await createAccount('feedstyle');
+    const { id } = await createDraft(account, `${PREFIX}Styled`);
+    const paperStyle = { bg: '#f4e9d8', text: '#3b2f2f' };
+    const paperTexture = { type: 'dots', size: 18, opacity: 0.4 };
+    await api(account, 'PATCH', `/api/v1/documents/${id}`, {
+      typography: 'serif',
+      paperStyle,
+      paperTexture,
+    });
+    await api(account, 'PATCH', `/api/v1/documents/${id}/publish`);
+
+    const res = await api(null, 'GET', `/api/v1/documents?q=${encodeURIComponent(`${PREFIX}Styled`)}`);
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      data: { items: { id: string; style: Record<string, unknown> | null }[] };
+    };
+    const card = body.data.items.find((item) => item.id === id);
+    expect(card?.style).toEqual({ typography: 'serif', paperStyle, paperTexture });
+  });
 });
 
 /**
