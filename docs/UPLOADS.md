@@ -139,3 +139,28 @@ On the frontend, set `NEXT_PUBLIC_UPLOADS_URL=https://<bucket>.fly.storage.tigri
 
 - **Postgres:** the API uses pgvector (memory feature). Confirm the Fly Postgres offering you pick supports the `vector` extension.
 - **Cost:** Tigris bills through the Fly invoice. At the time of writing the free allowance is 5 GB storage and 10,000 uploads/month, with no egress fees, then about $0.02/GB/month. Check the current numbers on <https://www.tigrisdata.com/pricing/>.
+
+## Pending: orphan cleanup (decided, not built)
+
+Stored objects are never deleted today. A replaced avatar, an image removed from a document, or a cover swapped for another all stay in the bucket. Storage is cheap (5 GB free on Tigris, then about $0.02/GB/month), so this is not urgent, but it grows forever.
+
+**Decision: a periodic sweep, not deletion at the moment of replacement.**
+
+Why deletion on replace is unsafe:
+
+- The same URL can live in several places. An author can paste one uploaded URL into two documents, or use their avatar URL as a cover.
+- Removing an image in the editor is not a server event. Undo, an unsaved draft or a late autosave can bring it back after the server would already have deleted it.
+- Every place that writes an image field would need delete logic, and missing one breaks live pages.
+
+The sweep instead runs in one place and only deletes what nothing points at:
+
+1. Run daily, in the same way as `startEmailQueue` in `src/http/server.ts`, behind a feature flag. Hold a Postgres advisory lock so only one machine sweeps when several run.
+2. Pick candidates from `uploads` that are older than a grace period (7 days). The grace period covers drafts that are still being written.
+3. Build the set of referenced URLs. Treat a candidate as referenced if its public URL (or key) appears anywhere an image can live:
+   - `profiles.avatar_url`, `documents.cover_image_url`, `books.cover_image_url`, `chat_servers.icon_url`, `platform_apps.icon_url`;
+   - inside jsonb: `documents.content` (image `src`), document style and `document_style_templates` (letterhead `imageUrl`), and the other jsonb columns that can hold user images (books, profiles, workspace).
+   - Include soft-deleted rows, so restoring a document never brings back a broken image.
+4. For each candidate that is not referenced: delete the object (`DeleteObjectCommand`), then delete the row. If the S3 delete fails, keep the row so the next run retries.
+5. Log how many were deleted and how many bytes were freed.
+
+Testing: an integration test with S3 mocked, as in `tests/integration/uploads.test.ts`. It should check that a referenced upload survives, an unreferenced one older than the grace period is deleted, and a recent one is kept.
