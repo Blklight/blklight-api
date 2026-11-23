@@ -1,0 +1,166 @@
+# Image uploads
+
+`POST /api/v1/uploads?purpose=editor|avatar` takes a multipart field `file` (max 10 MB) and returns
+`{ url, width, height, bytes }`.
+
+What the API does with the file (`src/features/uploads/uploads.service.ts`):
+
+- Checks the real format from the file content, not the client's mime type. It accepts JPEG, PNG, WebP, AVIF and GIF. It refuses SVG (it can carry scripts) and HEIC (prebuilt sharp cannot decode it).
+- Re-encodes the image as **WebP**, auto-rotates it and drops all metadata (EXIF, including GPS location).
+  - `editor`: at most 1920 px wide, never enlarged, quality 80. An animated GIF stays animated.
+  - `avatar`: square crop around the most interesting area, at most 512×512 and never enlarged, quality 82.
+- Decodes at most 2 images at a time (others wait their turn), and refuses animations over 200 frames.
+- Stores it at `<purpose>/<userId>/<id>.webp` with `Cache-Control: public, max-age=31536000, immutable` and records it in the `uploads` table.
+
+External URLs (imgur etc.) still work everywhere: the image columns stay plain URLs, and an upload only produces one more URL.
+
+The storage is any S3-compatible bucket. The code only reads these env vars, which are the names `fly storage create` sets, so local and Fly run the same code:
+
+| Var | Meaning |
+|---|---|
+| `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Read by the AWS SDK itself |
+| `BUCKET_NAME` | Bucket to write to |
+| `S3_FORCE_PATH_STYLE` | `true` for MinIO (path-style URLs); leave unset on Tigris |
+| `UPLOADS_PUBLIC_BASE_URL` | Public URL prefix the returned `url` is built from |
+| `FEATURE_UPLOADS` | Default `true`; uploads stay off (503) until `BUCKET_NAME` and `UPLOADS_PUBLIC_BASE_URL` are set |
+
+## Local
+
+1. Start the local S3 (MinIO) and create the public bucket `blklight-dev`:
+
+   ```bash
+   docker compose up -d s3 s3-bucket s3-public
+   ```
+
+   `s3-bucket` and `s3-public` are one-shot containers: they exit with code 0 once the bucket exists and is publicly readable. Files persist in the `s3_data` volume.
+
+   If your Postgres already runs from another compose project on port 5432, name only these services as above. A bare `docker compose up` would also try to start a second Postgres on the same port.
+
+2. Copy the upload block from `.env.example` into `.env.development`. The defaults match the compose file:
+
+   ```env
+   FEATURE_UPLOADS=true
+   AWS_ENDPOINT_URL_S3=http://localhost:9000
+   S3_FORCE_PATH_STYLE=true
+   AWS_REGION=auto
+   AWS_ACCESS_KEY_ID=blklight
+   AWS_SECRET_ACCESS_KEY=blklight-dev-secret
+   BUCKET_NAME=blklight-dev
+   UPLOADS_PUBLIC_BASE_URL=http://localhost:9000/blklight-dev
+   ```
+
+3. Run `npm run db:migrate` (creates the `uploads` table), then `npm run dev`.
+
+4. Try it:
+
+   ```bash
+   curl -F file=@photo.jpg -H "Authorization: Bearer <access token>" \
+     "http://localhost:4000/api/v1/uploads?purpose=editor"
+   ```
+
+   Open the returned `url` in the browser. To list what is stored:
+
+   ```bash
+   docker run --rm --network host -e MC_HOST_local=http://blklight:blklight-dev-secret@localhost:9000 \
+     cgr.dev/chainguard/minio-client:latest ls --recursive local/blklight-dev
+   ```
+
+The frontend needs `NEXT_PUBLIC_UPLOADS_URL=http://localhost:9000` so its CSP allows these images over plain http.
+
+Why Chainguard's image: the official `minio/minio` image stopped being published on Docker Hub in October 2025. `cgr.dev/chainguard/minio` is a free build of the same server. Any S3-compatible server (e.g. `pgsty/silo`) works the same way.
+
+## Deploying on Fly.io (guide, not set up yet)
+
+Nothing in the repo deploys to Fly yet. These are the steps when the time comes.
+
+### 1. Dockerfile
+
+`node:24-slim` uses glibc, so it runs sharp's prebuilt binary. Alpine (musl) needs extra care.
+
+```dockerfile
+FROM node:24-slim AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:24-slim
+WORKDIR /app
+ENV NODE_ENV=production
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY --from=build /app/dist ./dist
+COPY drizzle ./drizzle
+COPY drizzle.config.ts ./
+EXPOSE 4000
+CMD ["node", "dist/http/server.js"]
+```
+
+`drizzle-kit` is a devDependency, and the release command below needs it. Either move it to `dependencies` or run migrations from the build stage image.
+
+### 2. App
+
+```bash
+fly launch --no-deploy        # pick region gru (São Paulo); it writes fly.toml
+```
+
+In `fly.toml`:
+
+```toml
+[http_service]
+  internal_port = 4000
+
+[[vm]]
+  memory = "512mb"            # sharp needs headroom; 256mb is too tight for large photos
+
+[deploy]
+  release_command = "npm run db:migrate"
+```
+
+Set the usual secrets: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `CORS_ORIGIN`, `TRUST_PROXY`, and so on.
+
+### 3. Storage (Tigris)
+
+```bash
+fly storage create --public
+```
+
+This creates a Tigris bucket and sets `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3`, `AWS_REGION` and `BUCKET_NAME` as app secrets. No code changes are needed. Then:
+
+```bash
+fly secrets set UPLOADS_PUBLIC_BASE_URL=https://<bucket>.fly.storage.tigris.dev
+fly deploy
+```
+
+On the frontend, set `NEXT_PUBLIC_UPLOADS_URL=https://<bucket>.fly.storage.tigris.dev`. The CSP already allows any `https:` image.
+
+### 4. Before deploying, check
+
+- **Postgres:** the API uses pgvector (memory feature). Confirm the Fly Postgres offering you pick supports the `vector` extension.
+- **Cost:** Tigris bills through the Fly invoice. At the time of writing the free allowance is 5 GB storage and 10,000 uploads/month, with no egress fees, then about $0.02/GB/month. Check the current numbers on <https://www.tigrisdata.com/pricing/>.
+
+## Pending: orphan cleanup (decided, not built)
+
+Stored objects are never deleted today. A replaced avatar, an image removed from a document, or a cover swapped for another all stay in the bucket. Storage is cheap (5 GB free on Tigris, then about $0.02/GB/month), so this is not urgent, but it grows forever.
+
+**Decision: a periodic sweep, not deletion at the moment of replacement.**
+
+Why deletion on replace is unsafe:
+
+- The same URL can live in several places. An author can paste one uploaded URL into two documents, or use their avatar URL as a cover.
+- Removing an image in the editor is not a server event. Undo, an unsaved draft or a late autosave can bring it back after the server would already have deleted it.
+- Every place that writes an image field would need delete logic, and missing one breaks live pages.
+
+The sweep instead runs in one place and only deletes what nothing points at:
+
+1. Run daily, in the same way as `startEmailQueue` in `src/http/server.ts`, behind a feature flag. Hold a Postgres advisory lock so only one machine sweeps when several run.
+2. Pick candidates from `uploads` that are older than a grace period (7 days). The grace period covers drafts that are still being written.
+3. Build the set of referenced URLs. Treat a candidate as referenced if its public URL (or key) appears anywhere an image can live:
+   - `profiles.avatar_url`, `documents.cover_image_url`, `books.cover_image_url`, `chat_servers.icon_url`, `platform_apps.icon_url`;
+   - inside jsonb: `documents.content` (image `src`), document style and `document_style_templates` (letterhead `imageUrl`), and the other jsonb columns that can hold user images (books, profiles, workspace).
+   - Include soft-deleted rows, so restoring a document never brings back a broken image.
+4. For each candidate that is not referenced: delete the object (`DeleteObjectCommand`), then delete the row. If the S3 delete fails, keep the row so the next run retries.
+5. Log how many were deleted and how many bytes were freed.
+
+Testing: an integration test with S3 mocked, as in `tests/integration/uploads.test.ts`. It should check that a referenced upload survives, an unreferenced one older than the grace period is deleted, and a recent one is kept.

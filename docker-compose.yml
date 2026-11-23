@@ -15,5 +15,39 @@ services:
       timeout: 5s
       retries: 5
 
+  # Local S3 for image uploads (stands in for Tigris on Fly). The official
+  # minio/minio image left Docker Hub in Oct 2025; Chainguard's build is free.
+  s3:
+    image: cgr.dev/chainguard/minio:latest
+    command: ["server", "/data"]
+    ports:
+      - "9000:9000"
+    environment:
+      MINIO_ROOT_USER: ${S3_ROOT_USER:-blklight}
+      MINIO_ROOT_PASSWORD: ${S3_ROOT_PASSWORD:-blklight-dev-secret}
+    volumes:
+      - s3_data:/data
+
+  # One-shots (the mc image has no shell): create the dev bucket, then make its
+  # objects publicly readable. They retry until MinIO answers, then exit 0.
+  s3-bucket:
+    image: cgr.dev/chainguard/minio-client:latest
+    depends_on: [s3]
+    restart: on-failure
+    command: ["mb", "--ignore-existing", "local/blklight-dev"]
+    environment:
+      MC_HOST_local: http://${S3_ROOT_USER:-blklight}:${S3_ROOT_PASSWORD:-blklight-dev-secret}@s3:9000
+
+  s3-public:
+    image: cgr.dev/chainguard/minio-client:latest
+    depends_on:
+      s3-bucket:
+        condition: service_completed_successfully
+    restart: on-failure
+    command: ["anonymous", "set", "download", "local/blklight-dev"]
+    environment:
+      MC_HOST_local: http://${S3_ROOT_USER:-blklight}:${S3_ROOT_PASSWORD:-blklight-dev-secret}@s3:9000
+
 volumes:
   postgres_data:
+  s3_data:
