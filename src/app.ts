@@ -13,6 +13,7 @@ import websocket from '@fastify/websocket';
 import swagger from '@fastify/swagger';
 import scalar from '@scalar/fastify-api-reference';
 import oauth2 from '@fastify/oauth2';
+import multipart from '@fastify/multipart';
 import { env } from './config/env';
 import { features } from './config/features';
 import { AppError, ValidationError, RateLimitError } from './utils/errors';
@@ -39,6 +40,7 @@ import memoryRoutes from './features/memory/memory.routes';
 import chatRoutes from './features/chat/chat.routes';
 import organizationRoutes from './features/organizations/organizations.routes';
 import adminRoutes from './features/admin/admin.routes';
+import uploadsRoutes from './features/uploads/uploads.routes';
 
 export async function buildApp() {
   const app = Fastify({
@@ -104,6 +106,11 @@ export async function buildApp() {
     timeWindow: '1 minute',
     errorResponseBuilder: (_request, context) =>
       new RateLimitError(`Rate limit exceeded, retry in ${context.after}`),
+  });
+
+  // Only the uploads route reads multipart; one file, capped at 10 MB.
+  await app.register(multipart, {
+    limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 0 },
   });
 
   await app.register(websocket, {
@@ -272,6 +279,7 @@ export async function buildApp() {
   await app.register(chatRoutes, { prefix: '/api/v1' });
   await app.register(organizationRoutes, { prefix: '/api/v1' });
   await app.register(adminRoutes, { prefix: '/api/v1' });
+  await app.register(uploadsRoutes, { prefix: '/api/v1/uploads' });
 
   const startTime = Date.now();
   app.get('/health', async (_request, _reply) => ({

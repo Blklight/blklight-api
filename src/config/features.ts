@@ -7,6 +7,7 @@ export const features = {
   emailQueue: env.FEATURE_EMAIL_QUEUE,
   codeSandbox: env.FEATURE_CODE_SANDBOX,
   memory: env.FEATURE_MEMORY && !!env.GEMINI_API_KEY,
+  uploads: env.FEATURE_UPLOADS && !!env.BUCKET_NAME && !!env.UPLOADS_PUBLIC_BASE_URL,
 } as const;
 
 export type FeatureName = keyof typeof features;

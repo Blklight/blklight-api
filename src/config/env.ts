@@ -130,6 +130,13 @@ const envSchema = z
     FEATURE_CODE_SANDBOX: booleanFromEnvDefault(true),
     FEATURE_MEMORY: booleanFromEnvDefault(true),
     GEMINI_API_KEY: z.string().optional(),
+    /**
+     * Image uploads to S3-compatible storage (local MinIO, Tigris on Fly). The
+     * AWS_* credentials and AWS_ENDPOINT_URL_S3 are read by the AWS SDK itself.
+     */
+    FEATURE_UPLOADS: booleanFromEnvDefault(true),
+    BUCKET_NAME: z.string().min(1).optional(),
+    UPLOADS_PUBLIC_BASE_URL: z.string().url().optional(),
     ADMIN_EMAIL: z.string().email().optional(),
     ADMIN_PASSWORD: z.string().min(8).optional(),
   })
