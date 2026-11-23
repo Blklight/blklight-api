@@ -8,7 +8,7 @@ What the API does with the file (`src/features/uploads/uploads.service.ts`):
 - Checks the real format from the file content, not the client's mime type. It accepts JPEG, PNG, WebP, AVIF and GIF. It refuses SVG (it can carry scripts) and HEIC (prebuilt sharp cannot decode it).
 - Re-encodes the image as **WebP**, auto-rotates it and drops all metadata (EXIF, including GPS location).
   - `editor`: at most 1920 px wide, never enlarged, quality 80. An animated GIF stays animated.
-  - `avatar`: cropped to 512×512 around the most interesting area, quality 82.
+  - `avatar`: square crop around the most interesting area, at most 512×512 and never enlarged, quality 82.
 - Stores it at `<purpose>/<userId>/<id>.webp` with `Cache-Control: public, max-age=31536000, immutable` and records it in the `uploads` table.
 
 External URLs (imgur etc.) still work everywhere: the image columns stay plain URLs, and an upload only produces one more URL.

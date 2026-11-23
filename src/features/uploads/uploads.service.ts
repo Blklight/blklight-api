@@ -19,6 +19,8 @@ const s3 = new S3Client({
   forcePathStyle: /localhost|127\.0\.0\.1/.test(process.env.AWS_ENDPOINT_URL_S3 ?? ''),
 });
 
+const avatarSide = (meta: Metadata) => Math.min(512, meta.width ?? 512, meta.height ?? 512);
+
 export interface ProcessedImage {
   data: Buffer;
   width: number;
@@ -29,7 +31,7 @@ export interface ProcessedImage {
  * Validate an uploaded image by its real content and re-encode it as WebP,
  * resized for its purpose, auto-rotated, with all metadata (EXIF/GPS) dropped.
  * @param input - Raw uploaded bytes
- * @param purpose - editor (max 1920px wide) or avatar (512x512 crop)
+ * @param purpose - editor (max 1920px wide) or avatar (square crop, at most 512px)
  * @returns WebP bytes and final dimensions
  */
 export async function processImage(input: Buffer, purpose: UploadPurpose): Promise<ProcessedImage> {
@@ -59,7 +61,8 @@ export async function processImage(input: Buffer, purpose: UploadPurpose): Promi
 
     image =
       purpose === 'avatar'
-        ? image.resize(512, 512, { fit: 'cover', position: 'attention' }).webp({ quality: 82 })
+        ? // Square crop, never upscaled: a 460x300 photo becomes 300x300, not a blurry 512x512.
+          image.resize(avatarSide(meta), avatarSide(meta), { fit: 'cover', position: 'attention' }).webp({ quality: 82 })
         : image.resize({ width: 1920, withoutEnlargement: true }).webp({ quality: 80, effort: 4 });
 
     const { data, info } = await image.toBuffer({ resolveWithObject: true });

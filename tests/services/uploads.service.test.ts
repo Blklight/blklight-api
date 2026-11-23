@@ -34,6 +34,11 @@ describe('processImage', () => {
     expect([meta.width, meta.height, meta.format]).toEqual([512, 512, 'webp']);
   });
 
+  it('crops a small avatar to a square without enlarging it', async () => {
+    const out = await processImage(await photo(460, 300), 'avatar');
+    expect([out.width, out.height]).toEqual([300, 300]);
+  });
+
   it('accepts PNG input', async () => {
     const png = await sharp({ create: { width: 50, height: 40, channels: 4, background: '#ff000080' } }).png().toBuffer();
     const out = await processImage(png, 'editor');
