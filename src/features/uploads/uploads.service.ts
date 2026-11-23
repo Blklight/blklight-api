@@ -11,13 +11,34 @@ sharp.concurrency(1);
 sharp.cache(false);
 
 const MAX_INPUT_PIXELS = 40_000_000;
+/** Each frame of an animated image is decoded and re-encoded: cap the CPU per upload. */
+export const MAX_FRAMES = 200;
+/** Images decoded at once. A 40 MP photo takes ~160 MB raw, so this bounds memory on small machines. */
+const MAX_PARALLEL = 2;
+
+let running = 0;
+const waiting: Array<() => void> = [];
+
+/**
+ * Run `task` once fewer than MAX_PARALLEL tasks are running; later callers wait in FIFO order.
+ * shortcut: the queue is unbounded (per-user rate limit caps it); add a max length if uploads
+ * ever outgrow that.
+ */
+export async function withImageSlot<T>(task: () => Promise<T>): Promise<T> {
+  if (running < MAX_PARALLEL) running++;
+  else await new Promise<void>((resolve) => waiting.push(resolve)); // slot handed over below
+  try {
+    return await task();
+  } finally {
+    const next = waiting.shift();
+    if (next) next();
+    else running--;
+  }
+}
 
 // AWS SDK reads AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION and
 // AWS_ENDPOINT_URL_S3 from the environment (the names `fly storage create` sets).
-// Local S3 servers (MinIO) only answer path-style URLs.
-const s3 = new S3Client({
-  forcePathStyle: /localhost|127\.0\.0\.1/.test(process.env.AWS_ENDPOINT_URL_S3 ?? ''),
-});
+const s3 = new S3Client({ forcePathStyle: env.S3_FORCE_PATH_STYLE });
 
 const avatarSide = (meta: Metadata) => Math.min(512, meta.width ?? 512, meta.height ?? 512);
 
@@ -54,6 +75,9 @@ export async function processImage(input: Buffer, purpose: UploadPurpose): Promi
   }
 
   const animated = purpose === 'editor' && (meta.pages ?? 1) > 1;
+  if (animated && meta.pages! > MAX_FRAMES) {
+    throw new ValidationError(`Animated images can have at most ${MAX_FRAMES} frames`);
+  }
 
   try {
     let image = sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, animated });
@@ -80,7 +104,7 @@ export async function processImage(input: Buffer, purpose: UploadPurpose): Promi
  * @returns Public URL and stats of the stored WebP
  */
 export async function storeImage(userId: string, purpose: UploadPurpose, input: Buffer) {
-  const image = await processImage(input, purpose);
+  const image = await withImageSlot(() => processImage(input, purpose));
   const key = `${purpose}/${userId}/${createId()}.webp`;
 
   await s3.send(new PutObjectCommand({

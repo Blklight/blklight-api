@@ -9,6 +9,7 @@ What the API does with the file (`src/features/uploads/uploads.service.ts`):
 - Re-encodes the image as **WebP**, auto-rotates it and drops all metadata (EXIF, including GPS location).
   - `editor`: at most 1920 px wide, never enlarged, quality 80. An animated GIF stays animated.
   - `avatar`: square crop around the most interesting area, at most 512×512 and never enlarged, quality 82.
+- Decodes at most 2 images at a time (others wait their turn), and refuses animations over 200 frames.
 - Stores it at `<purpose>/<userId>/<id>.webp` with `Cache-Control: public, max-age=31536000, immutable` and records it in the `uploads` table.
 
 External URLs (imgur etc.) still work everywhere: the image columns stay plain URLs, and an upload only produces one more URL.
@@ -19,6 +20,7 @@ The storage is any S3-compatible bucket. The code only reads these env vars, whi
 |---|---|
 | `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Read by the AWS SDK itself |
 | `BUCKET_NAME` | Bucket to write to |
+| `S3_FORCE_PATH_STYLE` | `true` for MinIO (path-style URLs); leave unset on Tigris |
 | `UPLOADS_PUBLIC_BASE_URL` | Public URL prefix the returned `url` is built from |
 | `FEATURE_UPLOADS` | Default `true`; uploads stay off (503) until `BUCKET_NAME` and `UPLOADS_PUBLIC_BASE_URL` are set |
 
@@ -39,6 +41,7 @@ The storage is any S3-compatible bucket. The code only reads these env vars, whi
    ```env
    FEATURE_UPLOADS=true
    AWS_ENDPOINT_URL_S3=http://localhost:9000
+   S3_FORCE_PATH_STYLE=true
    AWS_REGION=auto
    AWS_ACCESS_KEY_ID=blklight
    AWS_SECRET_ACCESS_KEY=blklight-dev-secret

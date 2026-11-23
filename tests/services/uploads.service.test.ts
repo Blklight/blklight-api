@@ -1,12 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import sharp from 'sharp';
-import { processImage } from '../../src/features/uploads/uploads.service';
+import { processImage, withImageSlot, MAX_FRAMES } from '../../src/features/uploads/uploads.service';
 
 function photo(width: number, height: number) {
   return sharp({ create: { width, height, channels: 3, background: '#3366aa' } })
     .jpeg()
     .withExif({ IFD0: { Copyright: 'secret-exif' } })
     .toBuffer();
+}
+
+/** Minimal animated GIF: `frames` 1x1 frames (sharp cannot write multi-frame GIFs from scratch). */
+function animatedGif(frames: number) {
+  const header = Buffer.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1, 0, 1, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255]);
+  // Alternate black/white pixels (LZW 0x44 0x01 = index 0, 0x4c 0x01 = index 1) so the encoder cannot merge frames.
+  const frame = (white: boolean) =>
+    Buffer.from([0x21, 0xf9, 4, 0, 10, 0, 0, 0, 0x2c, 0, 0, 0, 0, 1, 0, 1, 0, 0, 2, 2, white ? 0x4c : 0x44, 0x01, 0]);
+  return Buffer.concat([header, ...Array.from({ length: frames }, (_, i) => frame(i % 2 === 1)), Buffer.from([0x3b])]);
 }
 
 describe('processImage', () => {
@@ -50,7 +59,56 @@ describe('processImage', () => {
     await expect(processImage(svg, 'editor')).rejects.toThrow(/Unsupported image format/);
   });
 
+  it('keeps a short animation animated', async () => {
+    const out = await processImage(animatedGif(3), 'editor');
+    expect((await sharp(out.data).metadata()).pages).toBe(3);
+  });
+
+  it(`rejects animations over ${MAX_FRAMES} frames`, async () => {
+    await expect(processImage(animatedGif(MAX_FRAMES + 1), 'editor')).rejects.toThrow(/at most/);
+  });
+
+  it('still accepts a long animation as an avatar (only the first frame is used)', async () => {
+    const out = await processImage(animatedGif(MAX_FRAMES + 1), 'avatar');
+    expect([out.width, out.height]).toEqual([1, 1]);
+  });
+
   it('rejects bytes that are not an image', async () => {
     await expect(processImage(Buffer.from('not an image'), 'avatar')).rejects.toThrow(/not a supported image/);
+  });
+});
+
+describe('withImageSlot', () => {
+  it('runs at most 2 tasks at once and starts the rest in order', async () => {
+    let active = 0;
+    let peak = 0;
+    const started: number[] = [];
+    const releases: Array<() => void> = [];
+    const task = (id: number) => () => {
+      started.push(id);
+      active++;
+      peak = Math.max(peak, active);
+      return new Promise<number>((resolve) => releases.push(() => { active--; resolve(id); }));
+    };
+
+    const all = Promise.all([1, 2, 3, 4].map((id) => withImageSlot(task(id))));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(started).toEqual([1, 2]);
+
+    releases.shift()!();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(started).toEqual([1, 2, 3]);
+
+    while (releases.length) {
+      releases.shift()!();
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    expect(await all).toEqual([1, 2, 3, 4]);
+    expect(peak).toBe(2);
+  });
+
+  it('frees the slot when a task fails', async () => {
+    await expect(withImageSlot(() => Promise.reject(new Error('boom')))).rejects.toThrow('boom');
+    await expect(withImageSlot(async () => 'ok')).resolves.toBe('ok');
   });
 });

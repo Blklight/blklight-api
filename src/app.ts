@@ -249,6 +249,17 @@ export async function buildApp() {
       });
     }
 
+    // Fastify and its plugins flag client mistakes with a 4xx statusCode (empty JSON
+    // body, malformed multipart, too many files...). Pass those through instead of 500.
+    const clientStatus = (knownError as { statusCode?: number }).statusCode;
+    if (typeof clientStatus === 'number' && clientStatus >= 400 && clientStatus < 500) {
+      return reply.code(clientStatus).send({
+        data: null,
+        error: { code: knownError.code ?? 'BAD_REQUEST', message: knownError.message },
+        message: knownError.message,
+      });
+    }
+
     return reply.code(500).send({
       data: null,
       error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },

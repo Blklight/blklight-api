@@ -137,6 +137,8 @@ const envSchema = z
     FEATURE_UPLOADS: booleanFromEnvDefault(true),
     BUCKET_NAME: z.string().min(1).optional(),
     UPLOADS_PUBLIC_BASE_URL: z.string().url().optional(),
+    // MinIO only answers path-style URLs (endpoint/bucket/key); Tigris works either way.
+    S3_FORCE_PATH_STYLE: booleanFromEnvDefault(false),
     ADMIN_EMAIL: z.string().email().optional(),
     ADMIN_PASSWORD: z.string().min(8).optional(),
   })

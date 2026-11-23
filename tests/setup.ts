@@ -26,6 +26,7 @@ vi.mock('../src/config/env', () => ({
     FRONTEND_URL: 'http://localhost:5173',
     FEATURE_UPLOADS: true,
     BUCKET_NAME: 'test-bucket',
+    S3_FORCE_PATH_STYLE: true,
     UPLOADS_PUBLIC_BASE_URL: 'http://localhost:9000/test-bucket',
   },
 }));

@@ -121,6 +121,17 @@ describe('POST /api/v1/uploads', () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it('answers a malformed multipart body with 400, not 500', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/uploads?purpose=editor',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'multipart/form-data; boundary=zzz' },
+      payload: 'garbage',
+    });
+    expect(res.statusCode, res.body).toBeGreaterThanOrEqual(400);
+    expect(res.statusCode, res.body).toBeLessThan(500);
+  });
+
   it('rejects a request without multipart body', async () => {
     const res = await app.inject({
       method: 'POST',

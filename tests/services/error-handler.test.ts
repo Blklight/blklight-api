@@ -34,6 +34,17 @@ describe('error handler', () => {
     expect(response.json()).toMatchObject({ data: null, error: { code: 'CONFLICT' } });
   });
 
+  it('passes Fastify client errors through as 4xx instead of 500', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/__zod',
+      headers: { 'content-type': 'application/json' },
+      payload: '',
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ data: null, error: { code: 'FST_ERR_CTP_EMPTY_JSON_BODY' } });
+  });
+
   it('turns a ZodError from a route into the 400 envelope with per-field messages', async () => {
     const response = await app.inject({ method: 'POST', url: '/__zod', payload: { title: '', tags: ['a', 'b'] } });
     expect(response.statusCode).toBe(400);

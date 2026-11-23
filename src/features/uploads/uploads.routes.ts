@@ -38,17 +38,19 @@ export default async function uploadsRoutes(app: FastifyInstance) {
     const { purpose } = uploadQuerySchema.parse(request.query);
 
     if (!request.isMultipart()) throw new ValidationError('Expected multipart/form-data with a "file" field');
-    const file = await request.file();
-    if (!file) throw new ValidationError('Missing "file" field');
 
     let buffer: Buffer;
     try {
+      const file = await request.file();
+      if (!file) throw new ValidationError('Missing "file" field');
       buffer = await file.toBuffer();
     } catch (err) {
       if ((err as { code?: string }).code === 'FST_REQ_FILE_TOO_LARGE') {
         throw new AppError('FILE_TOO_LARGE', 'Image must be at most 10 MB', 413);
       }
-      throw err;
+      if (err instanceof AppError || (err as { statusCode?: number }).statusCode) throw err;
+      // busboy parse failures (bad boundary, truncated body) carry no status of their own.
+      throw new ValidationError('Malformed multipart body');
     }
 
     const result = await storeImage(request.user.userId, purpose, buffer);
